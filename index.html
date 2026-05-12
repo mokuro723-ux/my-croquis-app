@@ -213,27 +213,22 @@
         document.getElementById('btn-hm-show').onclick = () => { isImageHidden = false; applyFilters(); };
         document.getElementById('btn-hm-hide').onclick = () => { isImageHidden = true; applyFilters(); };
 
-        // --- UIトグル系 ---
-        function toggle(key) {
-            settings[key] = !settings[key];
-            const btn = document.getElementById(key === 'mono' ? 'mono-btn' : key === 'grid' ? 'grid-btn' : key === 'hide' ? 'hide-btn' : key + '-btn');
-            settings[key] ? btn.classList.add("active") : btn.classList.remove("active");
-            if(key === 'hide' && !settings.hide) { isImageHidden = false; applyFilters(); }
-            if(key !== 'shuffle') applyFilters();
-        }
+      // --- UIトグル系 ---
+function toggle(key) {
+    settings[key] = !settings[key];
+    
+    // ボタンの見た目を更新
+    const btnId = key === 'mono' ? 'mono-btn' : key === 'grid' ? 'grid-btn' : key === 'hide' ? 'hide-btn' : key + '-btn';
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        settings[key] ? btn.classList.add("active") : btn.classList.remove("active");
+    }
 
-        function cycleBg() {
-            const colors = ['#000', '#2e2e2e', '#fff'];
-            bgMode = (bgMode + 1) % 3;
-            document.documentElement.style.setProperty('--bg-color', colors[bgMode]);
-            document.getElementById('bg-btn').style.color = bgMode > 0 ? 'white' : 'gray';
-        }
+    // 「一定時間で隠す」設定がオフになったら即座に画像を表示させる
+    if(key === 'hide' && !settings.hide) { 
+        isImageHidden = false; 
+    }
 
-        function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊"; }
-        function playSound() { if(!isMuted) { ui.sound.currentTime = 0; ui.sound.play().catch(()=>{}); } }
-
-        // --- サービスワーカー登録 (PWA用) ---
-        if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); }); }
-    </script>
-</body>
-</html>
+    // ★ここが重要：設定を変えたら即座に画面に反映させる
+    applyFilters(); 
+}
