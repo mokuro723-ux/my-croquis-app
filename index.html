@@ -9,21 +9,52 @@
         :root { --bg-color: #000; --panel-bg: #1e1e1e; --btn-bg: #333; --accent: #2d7cff; --hm-color: #ffb020; }
         * { box-sizing: border-box; user-select: none; }
         body { margin: 0; padding: 0; background-color: var(--bg-color); color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        #top-panel { background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; z-index: 10; }
+        
+        #top-panel { background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; z-index: 10; height: 60px; }
         #phase-label { color: var(--hm-color); font-weight: bold; width: 100px; font-size: 0.8rem; }
         #timer-label { font-size: 1.5rem; font-weight: bold; flex-grow: 1; text-align: center; }
         .icon-btn { background: none; border: none; color: gray; font-size: 1.2rem; cursor: pointer; }
-        #image-container { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        #canvas-area { position: relative; max-width: 100%; max-height: 100%; display: flex; justify-content: center; align-items: center; }
-        #main-image { max-width: 100%; max-height: 100%; object-fit: contain; transition: opacity 0.2s; display: none; }
-        #grid-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; border: 1px solid rgba(128,128,128,0.5); background-image: linear-gradient(to right, rgba(128,128,128,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.5) 1px, transparent 1px); background-size: 33.33% 33.33%; }
+        
+        /* メインの表示エリア：ここが重要 */
+        #image-container { 
+            flex-grow: 1; 
+            position: relative; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            overflow: hidden; /* はみ出しをカット */
+            padding: 10px;    /* 画面端に少し余裕を持たせる */
+        }
+        
+        #canvas-area { 
+            position: relative; 
+            max-width: 100%; 
+            max-height: 100%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+
+        #main-image { 
+            /* 画像全体を表示し、はみ出させないための魔法の3行 */
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; 
+            
+            display: none; 
+            transition: opacity 0.2s;
+        }
+        
+        #grid-overlay { position: absolute; top: 0; left: 0; pointer-events: none; display: none; border: 1px solid rgba(128,128,128,0.5); background-image: linear-gradient(to right, rgba(128,128,128,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.5) 1px, transparent 1px); background-size: 33.33% 33.33%; }
+        
         #progress-container { width: 100%; height: 6px; background-color: var(--panel-bg); }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 1s linear; }
+        
         #bottom-panel { background-color: var(--panel-bg); padding: 8px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; z-index: 10; }
         button { background-color: var(--btn-bg); color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; min-width: 40px; }
         button.active { background-color: #555; border: 1px solid var(--accent); }
         button.accent { background-color: var(--accent); }
-        button.hard-mode { color: var(--hm-color); font-weight: bold; border: 1px solid transparent; }
+        button.hard-mode { color: var(--hm-color); font-weight: bold; }
         button.hard-mode.active { background-color: var(--hm-color); color: black; }
         .separator { color: #444; margin: 0 2px; align-self: center; }
     </style>
@@ -74,7 +105,6 @@
     <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
 
     <script>
-        // 基本動作スクリプト（前回同様ですがタイマー周りを整理）
         let images = [], currentIndex = 0, historyStack = [];
         let timerSeconds = 30, remaining = 30, isRunning = false, timerInterval;
         let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false, hide: false };
@@ -105,7 +135,10 @@
             isImageHidden = false;
             ui.img.src = URL.createObjectURL(images[currentIndex]);
             ui.img.style.display = 'block';
+            
+            // 画像が読み込まれたら即座にサイズ合わせを実行
             ui.img.onload = () => { applyFilters(); };
+
             if(settings.hide && !hmActive) {
                 hideTimeout = setTimeout(() => { isImageHidden = true; applyFilters(); }, 5000);
             }
@@ -119,16 +152,20 @@
             ui.img.style.filter = settings.mono ? 'grayscale(100%)' : 'none';
             ui.img.style.opacity = isImageHidden ? '0' : '1';
             
-            if(settings.grid && !isImageHidden) {
-                ui.grid.style.display = 'block';
-                ui.grid.style.width = ui.img.clientWidth + 'px';
-                ui.grid.style.height = ui.img.clientHeight + 'px';
-            } else {
-                ui.grid.style.display = 'none';
-            }
+            // 重要：少し遅延させて、ブラウザが画像を配置し終わった後の正確なサイズを取得する
+            setTimeout(() => {
+                if(settings.grid && !isImageHidden) {
+                    ui.grid.style.display = 'block';
+                    ui.grid.style.width = ui.img.offsetWidth + 'px';
+                    ui.grid.style.height = ui.img.offsetHeight + 'px';
+                } else {
+                    ui.grid.style.display = 'none';
+                }
+            }, 50); 
         }
 
-        window.onresize = applyFilters;
+        // ウィンドウのリサイズ時にも呼び出す
+        window.addEventListener('resize', applyFilters);
 
         function toggle(key) {
             settings[key] = !settings[key];
@@ -138,22 +175,9 @@
             applyFilters();
         }
 
-        function nextImage() {
-            if(images.length === 0) return;
-            if(hmActive) exitHardMode();
-            historyStack.push(currentIndex);
-            currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length;
-            loadImage(); resetTimer(); playSound();
-        }
-
-        function prevImage() {
-            if(historyStack.length > 0) {
-                if(hmActive) exitHardMode();
-                currentIndex = historyStack.pop();
-                loadImage(); resetTimer();
-            }
-        }
-
+        // --- 以下、タイマーなどのロジックは変更なし ---
+        function nextImage() { if(images.length === 0) return; if(hmActive) exitHardMode(); historyStack.push(currentIndex); currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; loadImage(); resetTimer(); playSound(); }
+        function prevImage() { if(historyStack.length > 0) { if(hmActive) exitHardMode(); currentIndex = historyStack.pop(); loadImage(); resetTimer(); } }
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
         function startTimer() { isRunning = true; ui.playBtn.innerText = "⏸"; ui.playBtn.classList.remove("accent"); timerInterval = setInterval(tick, 1000); }
         function stopTimer() { isRunning = false; ui.playBtn.innerText = "▷"; ui.playBtn.classList.add("accent"); clearInterval(timerInterval); }
@@ -169,7 +193,6 @@
         function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; applyFilters(); resetTimer(); }
         function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; applyFilters(); playSound(); updateTimerUI(); }
         function hmNextPhase() { if(hmPhase < 4) setHmPhase(hmPhase + 1); else { stopTimer(); ui.phase.innerText = "完了"; playSound(); } }
-
         if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); }); }
     </script>
 </body>
