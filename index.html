@@ -10,25 +10,26 @@
         * { box-sizing: border-box; user-select: none; }
         body { margin: 0; padding: 0; background-color: var(--bg-color); color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* 上部パネル */
-        #top-panel { background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; }
-        #phase-label { color: var(--hm-color); font-weight: bold; width: 100px; }
+        #top-panel { background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; z-index: 10; }
+        #phase-label { color: var(--hm-color); font-weight: bold; width: 100px; font-size: 0.9rem; }
         #timer-label { font-size: 1.5rem; font-weight: bold; flex-grow: 1; text-align: center; }
         .icon-btn { background: none; border: none; color: gray; font-size: 1.2rem; cursor: pointer; }
         
-        /* メイン画像エリア */
-        #image-container { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        #main-image { max-width: 100%; max-height: 100%; object-fit: contain; transition: opacity 0.3s; }
-        #grid-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; display: none; background-image: linear-gradient(to right, gray 1px, transparent 1px), linear-gradient(to bottom, gray 1px, transparent 1px); background-size: 33.33% 33.33%; }
+        #image-container { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; background-color: transparent; }
         
-        /* プログレスバー */
+        /* 画像とグリッドを重ねるための枠 */
+        #canvas-area { position: relative; max-width: 100%; max-height: 100%; display: flex; justify-content: center; align-items: center; }
+        #main-image { max-width: 100%; max-height: 100%; object-fit: contain; transition: opacity 0.2s; display: none; }
+        
+        /* グリッドを画像と全く同じサイズにする設定 */
+        #grid-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; border: 1px solid rgba(128,128,128,0.5); background-image: linear-gradient(to right, rgba(128,128,128,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.5) 1px, transparent 1px); background-size: 33.33% 33.33%; }
+        
         #progress-container { width: 100%; height: 6px; background-color: var(--panel-bg); }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 1s linear; }
         
-        /* 下部パネル */
-        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
-        button { background-color: var(--btn-bg); color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        button.active { color: white; background-color: #555; }
+        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; z-index: 10; }
+        button { background-color: var(--btn-bg); color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+        button.active { background-color: #555; border: 1px solid var(--accent); }
         button.accent { background-color: var(--accent); }
         button.hard-mode { color: var(--hm-color); font-weight: bold; }
         button.hard-mode.active { background-color: var(--hm-color); color: black; }
@@ -41,16 +42,18 @@
         <div id="phase-label"></div>
         <div id="timer-label">⏱ 30</div>
         <div style="display:flex; gap:10px;">
-            <button id="btn-hm-show" style="display:none; font-size:0.8rem;">③表示</button>
-            <button id="btn-hm-hide" style="display:none; font-size:0.8rem;">④隠す</button>
+            <button id="btn-hm-show" style="display:none; font-size:0.7rem;">③表示</button>
+            <button id="btn-hm-hide" style="display:none; font-size:0.7rem;">④隠す</button>
             <button class="icon-btn" id="bg-btn" onclick="cycleBg()">🎨</button>
             <button class="icon-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
         </div>
     </div>
 
     <div id="image-container">
-        <img id="main-image" src="" style="display:none;">
-        <div id="grid-overlay"></div>
+        <div id="canvas-area">
+            <img id="main-image" src="">
+            <div id="grid-overlay"></div>
+        </div>
     </div>
 
     <div id="progress-container"><div id="progress-bar"></div></div>
@@ -62,32 +65,26 @@
         <button id="play-btn" class="accent" onclick="toggleTimer()">▷</button>
         <button onclick="nextImage()">▷|</button>
         <span class="separator">|</span>
-        <button onclick="setTimer(30)" style="font-size: 0.9rem;">30秒</button>
-        <button onclick="setTimer(60)" style="font-size: 0.9rem;">1分</button>
-        <button onclick="setTimer(120)" style="font-size: 0.9rem;">2分</button>
-        <button onclick="setTimer(300)" style="font-size: 0.9rem;">5分</button>
-        <button onclick="setTimer(600)" style="font-size: 0.9rem;">10分</button>
+        <button onclick="setTimer(30)">30s</button>
+        <button onclick="setTimer(60)">1m</button>
+        <button onclick="setTimer(300)">5m</button>
         <span class="separator">|</span>
-        <button id="flip-h-btn" onclick="toggle('flipH')">⇄</button>
-        <button id="flip-v-btn" onclick="toggle('flipV')">⇅</button>
+        <button id="flipH-btn" onclick="toggle('flipH')">⇄</button>
+        <button id="flipV-btn" onclick="toggle('flipV')">⇅</button>
         <button id="shuffle-btn" onclick="toggle('shuffle')" class="active">🔀</button>
         <button id="grid-btn" onclick="toggle('grid')">#</button>
         <button id="mono-btn" onclick="toggle('mono')">🌗</button>
         <button id="hide-btn" onclick="toggle('hide')">👁</button>
-        <span class="separator">|</span>
         <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()">🧠 ハード</button>
     </div>
 
     <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
 
     <script>
-        // --- 状態管理 ---
         let images = [], currentIndex = 0, historyStack = [];
         let timerSeconds = 30, remaining = 30, isRunning = false, timerInterval;
         let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false, hide: false };
-        let isMuted = false, bgMode = 0;
-        let hideTimeout, isImageHidden = false;
-        
+        let isMuted = false, bgMode = 0, isImageHidden = false, hideTimeout;
         let hmActive = false, hmPhase = 0;
         const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
 
@@ -95,45 +92,69 @@
             img: document.getElementById('main-image'), timer: document.getElementById('timer-label'),
             prog: document.getElementById('progress-bar'), playBtn: document.getElementById('play-btn'),
             grid: document.getElementById('grid-overlay'), sound: document.getElementById('sound-player'),
-            phase: document.getElementById('phase-label'), hmBtn: document.getElementById('hm-btn')
+            phase: document.getElementById('phase-label'), hmBtn: document.getElementById('hm-btn'),
+            canvas: document.getElementById('canvas-area')
         };
 
-        // --- ファイル読み込み ---
         document.getElementById('folder-input').addEventListener('change', (e) => {
             const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
             if(files.length > 0) {
-                images = files; currentIndex = 0; historyStack = [];
-                if(settings.shuffle) shuffleArray(images);
-                loadImage();
+                images = files; if(settings.shuffle) shuffleArray(images);
+                currentIndex = 0; loadImage();
             }
         });
 
         function shuffleArray(arr) { for(let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 
-        // --- 画像表示 ---
         function loadImage() {
             if(images.length === 0) return;
-            clearTimeout(hideTimeout); isImageHidden = false;
-            
-            const file = images[currentIndex];
-            ui.img.src = URL.createObjectURL(file);
+            clearTimeout(hideTimeout);
+            isImageHidden = false;
+            ui.img.src = URL.createObjectURL(images[currentIndex]);
             ui.img.style.display = 'block';
-            applyFilters();
             
-            if(settings.hide && !hmActive) hideTimeout = setTimeout(() => { isImageHidden = true; applyFilters(); }, 5000);
+            // 画像の読み込み完了を待ってからグリッドとフィルタを適用
+            ui.img.onload = () => { applyFilters(); };
+            
+            if(settings.hide && !hmActive) {
+                hideTimeout = setTimeout(() => { isImageHidden = true; applyFilters(); }, 5000);
+            }
         }
 
         function applyFilters() {
-            ui.img.style.opacity = isImageHidden ? '0' : '1';
+            // 反転処理を確実に適用
             let transform = '';
             if(settings.flipH) transform += 'scaleX(-1) ';
             if(settings.flipV) transform += 'scaleY(-1) ';
             ui.img.style.transform = transform;
+            
+            // その他のフィルタ
             ui.img.style.filter = settings.mono ? 'grayscale(100%)' : 'none';
-            ui.grid.style.display = settings.grid && !isImageHidden ? 'block' : 'none';
+            ui.img.style.opacity = isImageHidden ? '0' : '1';
+            
+            // グリッドを画像の表示サイズに合わせる
+            if(settings.grid && !isImageHidden) {
+                ui.grid.style.display = 'block';
+                ui.grid.style.width = ui.img.clientWidth + 'px';
+                ui.grid.style.height = ui.img.clientHeight + 'px';
+            } else {
+                ui.grid.style.display = 'none';
+            }
         }
 
-        function nextImage(manual = true) {
+        // ウィンドウサイズが変わった時にグリッドを再調整
+        window.onresize = applyFilters;
+
+        function toggle(key) {
+            settings[key] = !settings[key];
+            const btn = document.getElementById(key + '-btn') || document.getElementById(key === 'mono' ? 'mono-btn' : key === 'grid' ? 'grid-btn' : 'hide-btn');
+            if(btn) settings[key] ? btn.classList.add("active") : btn.classList.remove("active");
+            
+            if(key === 'hide' && !settings.hide) isImageHidden = false;
+            applyFilters();
+        }
+
+        function nextImage() {
             if(images.length === 0) return;
             if(hmActive) exitHardMode();
             historyStack.push(currentIndex);
@@ -149,86 +170,24 @@
             }
         }
 
-        // --- タイマー処理 ---
-        function setTimer(sec) { exitHardMode(); timerSeconds = sec; resetTimer(); }
-        
-        function resetTimer() {
-            remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds;
-            updateTimerUI();
-            if(isRunning) { clearInterval(timerInterval); startTimer(); }
-        }
-
-        function toggleTimer() {
-            if(images.length === 0) return;
-            isRunning ? stopTimer() : startTimer();
-        }
-
-        function startTimer() {
-            isRunning = true; ui.playBtn.innerText = "⏸"; ui.playBtn.classList.remove("accent");
-            timerInterval = setInterval(() => {
-                remaining--; updateTimerUI();
-                if(remaining <= 0) { hmActive ? hmNextPhase() : nextImage(false); }
-            }, 1000);
-        }
-
+        function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
+        function startTimer() { isRunning = true; ui.playBtn.innerText = "⏸"; ui.playBtn.classList.remove("accent"); timerInterval = setInterval(tick, 1000); }
         function stopTimer() { isRunning = false; ui.playBtn.innerText = "▷"; ui.playBtn.classList.add("accent"); clearInterval(timerInterval); }
+        function tick() { remaining--; updateTimerUI(); if(remaining <= 0) hmActive ? hmNextPhase() : nextImage(); }
+        function resetTimer() { remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; updateTimerUI(); }
+        function setTimer(sec) { exitHardMode(); timerSeconds = sec; resetTimer(); }
+        function updateTimerUI() { ui.timer.innerText = `⏱ ${remaining}`; const total = hmActive ? hmPhases[hmPhase].s : timerSeconds; ui.prog.style.width = `${(remaining / total) * 100}%`; }
+        function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊"; }
+        function playSound() { if(!isMuted) { ui.sound.currentTime = 0; ui.sound.play().catch(()=>{}); } }
+        function cycleBg() { const colors = ['#000', '#2e2e2e', '#fff']; bgMode = (bgMode + 1) % 3; document.documentElement.style.setProperty('--bg-color', colors[bgMode]); }
 
-        function updateTimerUI() {
-            ui.timer.innerText = `⏱ ${remaining}`;
-            const total = hmActive ? hmPhases[hmPhase].s : timerSeconds;
-            ui.prog.style.width = `${(remaining / total) * 100}%`;
-        }
-
-        // --- ハードモード ---
         function toggleHardMode() { hmActive ? exitHardMode() : startHardMode(); }
-        
-        function startHardMode() {
-            if(images.length === 0) return;
-            hmActive = true; ui.hmBtn.classList.add("active");
-            setHmPhase(1); startTimer();
-        }
+        function startHardMode() { if(images.length === 0) return; hmActive = true; ui.hmBtn.classList.add("active"); setHmPhase(1); startTimer(); }
+        function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; applyFilters(); resetTimer(); }
+        function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; applyFilters(); playSound(); updateTimerUI(); }
+        function hmNextPhase() { if(hmPhase < 4) setHmPhase(hmPhase + 1); else { stopTimer(); ui.phase.innerText = "完了"; playSound(); } }
 
-        function exitHardMode() {
-            hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = "";
-            document.getElementById('btn-hm-show').style.display = "none"; document.getElementById('btn-hm-hide').style.display = "none";
-            isImageHidden = false; applyFilters(); resetTimer();
-        }
-
-        function setHmPhase(p) {
-            hmPhase = p; const phase = hmPhases[p];
-            ui.phase.innerText = phase.t;
-            remaining = phase.s;
-            isImageHidden = phase.h; applyFilters();
-            playSound(); updateTimerUI();
-        }
-
-        function hmNextPhase() {
-            if(hmPhase < 4) setHmPhase(hmPhase + 1);
-            else {
-                stopTimer(); ui.phase.innerText = "工程完了"; playSound();
-                document.getElementById('btn-hm-show').style.display = "block"; document.getElementById('btn-hm-hide').style.display = "block";
-            }
-        }
-
-        document.getElementById('btn-hm-show').onclick = () => { isImageHidden = false; applyFilters(); };
-        document.getElementById('btn-hm-hide').onclick = () => { isImageHidden = true; applyFilters(); };
-
-// --- UIトグル系 ---
-function toggle(key) {
-    settings[key] = !settings[key];
-    
-    // ボタンの見た目を更新
-    const btnId = key === 'mono' ? 'mono-btn' : key === 'grid' ? 'grid-btn' : key === 'hide' ? 'hide-btn' : key + '-btn';
-    const btn = document.getElementById(btnId);
-    if (btn) {
-        settings[key] ? btn.classList.add("active") : btn.classList.remove("active");
-    }
-
-    // 「一定時間で隠す」設定がオフになったら即座に画像を表示させる
-    if(key === 'hide' && !settings.hide) { 
-        isImageHidden = false; 
-    }
-
-    // ★ここが重要：設定を変えたら即座に画面に反映させる
-    applyFilters(); 
-}
+        if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); }); }
+    </script>
+</body>
+</html>
