@@ -8,37 +8,68 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Croquis PiP">
-    
     <link rel="manifest" href="manifest.json">
 
     <style>
-    <style>
-        :root { --bg-color: #000; --panel-bg: #1a1a1a; --btn-bg: #333; --accent: #00d4ff; --hm-color: #ffb020; --pip-color: #ff4785; }
+        /* 画面全体を「漆黒」に統一 */
+        :root { 
+            --bg-color: #000000; 
+            --panel-bg: #000000; 
+            --btn-bg: #222; 
+            --accent: #00d4ff; 
+            --hm-color: #ffb020; 
+            --pip-color: #ff4785; 
+        }
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
-        body { background-color: var(--bg-color); color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { 
+            background-color: var(--bg-color); 
+            color: white; 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
         
-        #top-panel { height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid #333; }
+        #top-panel { 
+            height: 60px; 
+            background-color: var(--panel-bg); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 0 15px; 
+            z-index: 100; 
+            border-bottom: 1px solid #1a1a1a; 
+        }
         #phase-label { color: var(--hm-color); font-weight: bold; width: 100px; font-size: 0.8rem; }
         #timer-label { font-size: 1.8rem; font-weight: bold; flex-grow: 1; text-align: center; color: var(--accent); letter-spacing: 2px; }
         .icon-btn { background: none; border: none; color: #888; font-size: 1.3rem; cursor: pointer; padding: 5px; }
         
-        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; }
+        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; background-color: #000; }
         #canvas-area { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
-        #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(255,255,255,0.3); background-image: linear-gradient(to right, rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
+        #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; }
+        #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(255,255,255,0.2); background-image: linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.2) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
         
-        #progress-container { width: 100%; height: 4px; background-color: #222; }
+        #progress-container { width: 100%; height: 4px; background-color: #111; }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 0.2s linear; }
         
-        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid #333; }
+        #bottom-panel { 
+            background-color: var(--panel-bg); 
+            padding: 10px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 6px; 
+            border-top: 1px solid #1a1a1a; 
+        }
         button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; min-width: 45px; }
-        button.active { background-color: #444; color: var(--accent); outline: 1px solid var(--accent); }
+        button.active { background-color: #333; color: var(--accent); outline: 1px solid var(--accent); }
         button.accent { background-color: var(--accent); color: #000; font-weight: bold; }
         button.hard-mode { color: var(--hm-color); }
         button.hard-mode.active { background-color: var(--hm-color); color: black; }
         button.pip-btn { color: var(--pip-color); font-weight: bold; }
         button.pip-btn.active { background-color: var(--pip-color); color: white; }
-        .separator { color: #444; align-self: center; font-size: 1.2rem; margin: 0 4px; }
+        .separator { color: #222; align-self: center; font-size: 1.2rem; margin: 0 4px; }
     </style>
 </head>
 <body>
@@ -73,10 +104,12 @@
         <button onclick="setTimer(60)">1m</button>
         <button onclick="setTimer(120)">2m</button>
         <button onclick="setTimer(300)">5m</button>
-        <button onclick="setTimer(600)">10m</button> <span class="separator">|</span>
+        <button onclick="setTimer(600)">10m</button> 
+        <span class="separator">|</span>
         <button id="shuffle-btn" onclick="toggle('shuffle')" class="active">🔀</button>
         <button id="flipH-btn" onclick="toggle('flipH')">⇄</button>
-        <button id="flipV-btn" onclick="toggle('flipV')">⇅</button> <button id="grid-btn" onclick="toggle('grid')">#</button>
+        <button id="flipV-btn" onclick="toggle('flipV')">⇅</button>
+        <button id="grid-btn" onclick="toggle('grid')">#</button>
         <button id="mono-btn" onclick="toggle('mono')">🌗</button>
         <button id="hide-btn" onclick="toggle('hide')">👁</button>
         <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()">🧠</button>
@@ -153,7 +186,7 @@
             pipCanvas.height = ui.img.naturalHeight;
             pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
             if (isImageHidden) {
-                pipCtx.fillStyle = '#1e1e1e';
+                pipCtx.fillStyle = '#000000';
                 pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
             } else {
                 pipCtx.save();
