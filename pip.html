@@ -11,24 +11,27 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        /* 画面全体を「漆黒」に統一 */
+        /* 初期状態：すべてを漆黒に設定 */
         :root { 
             --bg-color: #000000; 
             --panel-bg: #000000; 
+            --text-color: #ffffff;
             --btn-bg: #222; 
             --accent: #00d4ff; 
             --hm-color: #ffb020; 
             --pip-color: #ff4785; 
+            --border-color: #1a1a1a;
         }
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         body { 
             background-color: var(--bg-color); 
-            color: white; 
+            color: var(--text-color); 
             font-family: sans-serif; 
             display: flex; 
             flex-direction: column; 
             height: 100vh; 
             overflow: hidden; 
+            transition: background-color 0.3s, color 0.3s;
         }
         
         #top-panel { 
@@ -39,16 +42,16 @@
             align-items: center; 
             padding: 0 15px; 
             z-index: 100; 
-            border-bottom: 1px solid #1a1a1a; 
+            border-bottom: 1px solid var(--border-color); 
         }
         #phase-label { color: var(--hm-color); font-weight: bold; width: 100px; font-size: 0.8rem; }
         #timer-label { font-size: 1.8rem; font-weight: bold; flex-grow: 1; text-align: center; color: var(--accent); letter-spacing: 2px; }
         .icon-btn { background: none; border: none; color: #888; font-size: 1.3rem; cursor: pointer; padding: 5px; }
         
-        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; background-color: #000; }
+        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; }
         #canvas-area { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; }
-        #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(255,255,255,0.2); background-image: linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.2) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
+        #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(128,128,128,0.4); background-image: linear-gradient(to right, rgba(128,128,128,0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.4) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
         
         #progress-container { width: 100%; height: 4px; background-color: #111; }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 0.2s linear; }
@@ -60,16 +63,16 @@
             flex-wrap: wrap; 
             justify-content: center; 
             gap: 6px; 
-            border-top: 1px solid #1a1a1a; 
+            border-top: 1px solid var(--border-color); 
         }
         button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; min-width: 45px; }
-        button.active { background-color: #333; color: var(--accent); outline: 1px solid var(--accent); }
+        button.active { background-color: #444; color: var(--accent); outline: 1px solid var(--accent); }
         button.accent { background-color: var(--accent); color: #000; font-weight: bold; }
         button.hard-mode { color: var(--hm-color); }
         button.hard-mode.active { background-color: var(--hm-color); color: black; }
         button.pip-btn { color: var(--pip-color); font-weight: bold; }
         button.pip-btn.active { background-color: var(--pip-color); color: white; }
-        .separator { color: #222; align-self: center; font-size: 1.2rem; margin: 0 4px; }
+        .separator { color: #444; align-self: center; font-size: 1.2rem; margin: 0 4px; }
     </style>
 </head>
 <body>
@@ -218,6 +221,24 @@
             if(key === 'hide' && !settings.hide) isImageHidden = false;
             applyFilters(); 
         }
+
+        // ここが色を切り替える部分：背景・パネル・文字色・境界線をまとめて変更
+        function cycleBg() {
+            const themes = [
+                { bg: '#000000', panel: '#000000', text: '#ffffff', border: '#1a1a1a' }, // 真っ黒
+                { bg: '#2e2e2e', panel: '#1a1a1a', text: '#ffffff', border: '#333' },    // ダークグレー
+                { bg: '#ffffff', panel: '#f0f0f0', text: '#000000', border: '#ddd' }     // 白
+            ];
+            bgMode = (bgMode + 1) % 3;
+            const theme = themes[bgMode];
+            
+            const root = document.documentElement;
+            root.style.setProperty('--bg-color', theme.bg);
+            root.style.setProperty('--panel-bg', theme.panel);
+            root.style.setProperty('--text-color', theme.text);
+            root.style.setProperty('--border-color', theme.border);
+        }
+
         function nextImage() { if(images.length === 0) return; if(hmActive) exitHardMode(); historyStack.push(currentIndex); currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; loadImage(); resetTimer(); playSound(); }
         function prevImage() { if(historyStack.length > 0) { if(hmActive) exitHardMode(); currentIndex = historyStack.pop(); loadImage(); resetTimer(); } }
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
@@ -229,7 +250,6 @@
         function updateTimerUI() { let m = Math.floor(remaining / 60); let s = remaining % 60; ui.timer.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; const total = hmActive ? hmPhases[hmPhase].s : timerSeconds; ui.prog.style.width = `${(remaining / total) * 100}%`; }
         function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊"; }
         function playSound() { if(!isMuted) { ui.sound.currentTime = 0; ui.sound.play().catch(()=>{}); } }
-        function cycleBg() { const colors = ['#000', '#2e2e2e', '#fff']; bgMode = (bgMode + 1) % 3; document.documentElement.style.setProperty('--bg-color', colors[bgMode]); }
         function toggleHardMode() { hmActive ? exitHardMode() : startHardMode(); }
         function startHardMode() { if(images.length === 0) return; hmActive = true; ui.hmBtn.classList.add("active"); setHmPhase(1); startTimer(); }
         function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; ui.btnHmShow.style.display = 'none'; ui.btnHmHide.style.display = 'none'; applyFilters(); resetTimer(); }
