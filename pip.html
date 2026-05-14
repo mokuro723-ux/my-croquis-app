@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Croquis App (PiP Edition)</title>
-    <link rel="manifest" href="manifest.json">
+    <title>Croquis App (PiP Edition v2)</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #1a1a1a; --btn-bg: #333; --accent: #00d4ff; --hm-color: #ffb020; --pip-color: #ff4785; }
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
@@ -66,10 +65,10 @@
         <button onclick="setTimer(60)">1m</button>
         <button onclick="setTimer(120)">2m</button>
         <button onclick="setTimer(300)">5m</button>
-        <span class="separator">|</span>
+        <button onclick="setTimer(600)">10m</button> <span class="separator">|</span>
         <button id="shuffle-btn" onclick="toggle('shuffle')" class="active">🔀</button>
         <button id="flipH-btn" onclick="toggle('flipH')">⇄</button>
-        <button id="grid-btn" onclick="toggle('grid')">#</button>
+        <button id="flipV-btn" onclick="toggle('flipV')">⇅</button> <button id="grid-btn" onclick="toggle('grid')">#</button>
         <button id="mono-btn" onclick="toggle('mono')">🌗</button>
         <button id="hide-btn" onclick="toggle('hide')">👁</button>
         <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()">🧠</button>
@@ -77,7 +76,6 @@
     </div>
 
     <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
-    
     <canvas id="pip-canvas" style="display:none;"></canvas>
     <video id="pip-video" style="display:none;" muted autoplay playsinline></video>
 
@@ -88,7 +86,6 @@
         let isMuted = false, bgMode = 0, isImageHidden = false, hideTimeout;
         let hmActive = false, hmPhase = 0;
         const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
-
         let currentImageUrl = null, expectedEndTime = 0, resizeTimer;
 
         const ui = {
@@ -100,7 +97,6 @@
             pipBtn: document.getElementById('pip-btn')
         };
 
-        // PiP用セットアップ
         const pipCanvas = document.getElementById('pip-canvas');
         const pipCtx = pipCanvas.getContext('2d');
         const pipVideo = document.getElementById('pip-video');
@@ -140,60 +136,47 @@
                 ui.grid.style.left = ui.img.offsetLeft + 'px';
                 ui.grid.style.top = ui.img.offsetTop + 'px';
             } else { ui.grid.style.display = 'none'; }
-
-            updatePiPStream(); // フィルター変更時にPiPの映像も更新
+            updatePiPStream();
         }
 
-        // PiPの映像を更新する関数
         function updatePiPStream() {
             if (!ui.img.complete || ui.img.naturalWidth === 0) return;
-            
-            // キャンバスサイズを元の画像に合わせる
             pipCanvas.width = ui.img.naturalWidth;
             pipCanvas.height = ui.img.naturalHeight;
             pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
-
             if (isImageHidden) {
                 pipCtx.fillStyle = '#1e1e1e';
                 pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
-                return;
+            } else {
+                pipCtx.save();
+                pipCtx.translate(settings.flipH ? pipCanvas.width : 0, settings.flipV ? pipCanvas.height : 0);
+                pipCtx.scale(settings.flipH ? -1 : 1, settings.flipV ? -1 : 1);
+                if (settings.mono) { pipCtx.filter = 'grayscale(100%)'; }
+                pipCtx.drawImage(ui.img, 0, 0, pipCanvas.width, pipCanvas.height);
+                pipCtx.restore();
             }
-
-            pipCtx.save();
-            let scaleX = settings.flipH ? -1 : 1;
-            let scaleY = settings.flipV ? -1 : 1;
-            pipCtx.translate(settings.flipH ? pipCanvas.width : 0, settings.flipV ? pipCanvas.height : 0);
-            pipCtx.scale(scaleX, scaleY);
-            if (settings.mono) { pipCtx.filter = 'grayscale(100%)'; }
-            pipCtx.drawImage(ui.img, 0, 0, pipCanvas.width, pipCanvas.height);
-            pipCtx.restore();
-
-            // PiP映像ストリームがなければ作成（30fps）
             if (!pipVideo.srcObject) { pipVideo.srcObject = pipCanvas.captureStream(30); }
         }
 
-        // PiPの起動・停止
         async function togglePiP() {
-            if (images.length === 0) { alert("先に画像を読み込んでください"); return; }
+            if (images.length === 0) { alert("画像を読み込んでください"); return; }
             try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
-                } else {
-                    updatePiPStream();
-                    await pipVideo.play();
-                    await pipVideo.requestPictureInPicture();
-                }
-            } catch (error) {
-                console.error("PiP error:", error);
-                alert("このブラウザ・環境ではPiPを利用できません。");
-            }
+                if (document.pictureInPictureElement) { await document.exitPictureInPicture(); } 
+                else { updatePiPStream(); await pipVideo.play(); await pipVideo.requestPictureInPicture(); }
+            } catch (e) { alert("PiP非対応のブラウザです"); }
         }
 
         pipVideo.addEventListener('enterpictureinpicture', () => ui.pipBtn.classList.add('active'));
         pipVideo.addEventListener('leavepictureinpicture', () => ui.pipBtn.classList.remove('active'));
-
         window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(applyFilters, 100); });
-        function toggle(key) { settings[key] = !settings[key]; const btn = document.getElementById(key + '-btn') || document.getElementById(key === 'mono' ? 'mono-btn' : key === 'grid' ? 'grid-btn' : 'hide-btn'); if(btn) settings[key] ? btn.classList.add("active") : btn.classList.remove("active"); if(key === 'hide' && !settings.hide) isImageHidden = false; applyFilters(); }
+        
+        function toggle(key) { 
+            settings[key] = !settings[key]; 
+            const btn = document.getElementById(key + '-btn');
+            if(btn) settings[key] ? btn.classList.add("active") : btn.classList.remove("active");
+            if(key === 'hide' && !settings.hide) isImageHidden = false;
+            applyFilters(); 
+        }
         function nextImage() { if(images.length === 0) return; if(hmActive) exitHardMode(); historyStack.push(currentIndex); currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; loadImage(); resetTimer(); playSound(); }
         function prevImage() { if(historyStack.length > 0) { if(hmActive) exitHardMode(); currentIndex = historyStack.pop(); loadImage(); resetTimer(); } }
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
@@ -211,7 +194,6 @@
         function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; ui.btnHmShow.style.display = 'none'; ui.btnHmHide.style.display = 'none'; applyFilters(); resetTimer(); }
         function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); updateTimerUI(); }
         function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
-        if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); }); }
     </script>
 </body>
 </html>
