@@ -10,21 +10,11 @@
     <meta name="apple-mobile-web-app-title" content="Croquis">
 
     <style>
-        /* 初期状態：すべてを真っ黒(#000)に設定 */
-        :root { 
-            --bg-color: #000; 
-            --panel-bg: #000; 
-            --text-color: #fff; 
-            --border-color: #1a1a1a;
-            --btn-bg: #333; 
-            --accent: #00d4ff; 
-            --hm-color: #ffb020; 
-            --pip-color: #ff4785; 
-        }
+        :root { --bg-color: #000; --panel-bg: #1a1a1a; --btn-bg: #333; --accent: #00d4ff; --hm-color: #ffb020; --pip-color: #ff4785; }
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
-        body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { background-color: var(--bg-color); color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        #top-panel { height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid var(--border-color); }
+        #top-panel { height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid #333; }
         #phase-label { color: var(--hm-color); font-weight: bold; width: 100px; font-size: 0.8rem; }
         #timer-label { font-size: 1.8rem; font-weight: bold; flex-grow: 1; text-align: center; color: var(--accent); letter-spacing: 2px; }
         .icon-btn { background: none; border: none; color: #888; font-size: 1.3rem; cursor: pointer; padding: 5px; }
@@ -37,7 +27,7 @@
         #progress-container { width: 100%; height: 4px; background-color: #222; }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 0.2s linear; }
         
-        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); }
+        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid #333; }
         button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; min-width: 45px; }
         button.active { background-color: #444; color: var(--accent); outline: 1px solid var(--accent); }
         button.accent { background-color: var(--accent); color: #000; font-weight: bold; }
@@ -47,8 +37,8 @@
         button.pip-btn.active { background-color: var(--pip-color); color: white; }
         .separator { color: #444; align-self: center; font-size: 1.2rem; margin: 0 4px; }
 
-        /* PiP用のビデオ要素はdisplay:noneにするとiOSで動かないため、見えないサイズで配置 */
-        #pip-video { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        /* iOSの制限回避：display:noneは使わず、透明で極小にして裏に隠す */
+        #pip-canvas, #pip-video { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -100; }
     </style>
 </head>
 <body>
@@ -94,7 +84,7 @@
     </div>
 
     <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
-    <canvas id="pip-canvas" style="display:none;"></canvas>
+    <canvas id="pip-canvas"></canvas>
     <video id="pip-video" muted autoplay playsinline></video>
 
     <script>
@@ -154,16 +144,18 @@
                 ui.grid.style.left = ui.img.offsetLeft + 'px';
                 ui.grid.style.top = ui.img.offsetTop + 'px';
             } else { ui.grid.style.display = 'none'; }
-            updatePiPStream();
         }
 
         function updatePiPStream() {
             if (!ui.img.complete || ui.img.naturalWidth === 0) return;
-            pipCanvas.width = ui.img.naturalWidth;
-            pipCanvas.height = ui.img.naturalHeight;
+            
+            // 毎フレーム幅を代入するとクリアされてしまうため、変更時のみ更新
+            if (pipCanvas.width !== ui.img.naturalWidth) pipCanvas.width = ui.img.naturalWidth;
+            if (pipCanvas.height !== ui.img.naturalHeight) pipCanvas.height = ui.img.naturalHeight;
+            
             pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
             if (isImageHidden) {
-                pipCtx.fillStyle = '#000000';
+                pipCtx.fillStyle = '#1e1e1e';
                 pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
             } else {
                 pipCtx.save();
@@ -173,25 +165,44 @@
                 pipCtx.drawImage(ui.img, 0, 0, pipCanvas.width, pipCanvas.height);
                 pipCtx.restore();
             }
-            if (!pipVideo.srcObject) { pipVideo.srcObject = pipCanvas.captureStream(30); }
+            
+            if (!pipVideo.srcObject && pipCanvas.captureStream) { 
+                pipVideo.srcObject = pipCanvas.captureStream(30); 
+                pipVideo.play().catch(()=>{});
+            }
         }
 
-        async function togglePiP() {
-            if (images.length === 0) return;
+        // iOSのストリーム停止回避：常に描画を回し続ける
+        function renderLoop() {
+            updatePiPStream();
+            requestAnimationFrame(renderLoop);
+        }
+        requestAnimationFrame(renderLoop);
+
+        // iOSのジェスチャー断絶回避：awaitを完全に排除し、同期的に実行する
+        function togglePiP() {
+            if (images.length === 0) { alert("画像を読み込んでください"); return; }
+            
+            pipVideo.play().catch(()=>{}); // とにかく再生を確約する
+
             try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
+                if (document.pictureInPictureElement || (pipVideo.webkitPresentationMode === 'picture-in-picture')) {
+                    if (document.exitPictureInPicture) {
+                        document.exitPictureInPicture();
+                    } else if (pipVideo.webkitSetPresentationMode) {
+                        pipVideo.webkitSetPresentationMode('inline');
+                    }
                 } else {
-                    updatePiPStream();
-                    // iOSの制限回避：リクエストの直前に再生を開始する
-                    await pipVideo.play();
-                    await pipVideo.requestPictureInPicture();
+                    if (pipVideo.requestPictureInPicture) {
+                        pipVideo.requestPictureInPicture().catch(e => alert("PiPエラー: " + e.message));
+                    } else if (pipVideo.webkitSetPresentationMode) {
+                        pipVideo.webkitSetPresentationMode('picture-in-picture');
+                    } else {
+                        alert("PiP非対応のブラウザです");
+                    }
                 }
-            } catch (e) {
-                // 古いiOS/Safari用のフォールバック
-                if (pipVideo.webkitSupportsPresentationMode && pipVideo.webkitSupportsPresentationMode('picture-in-picture')) {
-                    pipVideo.webkitSetPresentationMode('picture-in-picture');
-                }
+            } catch (e) { 
+                alert("PiP非対応のブラウザです: " + e); 
             }
         }
 
@@ -206,23 +217,6 @@
             if(key === 'hide' && !settings.hide) isImageHidden = false;
             applyFilters(); 
         }
-
-        function cycleBg() {
-            // パネルやテキストも連動して切り替えるための設定
-            const themes = [
-                { bg: '#000000', panel: '#000000', text: '#ffffff', border: '#1a1a1a' },
-                { bg: '#2e2e2e', panel: '#1a1a1a', text: '#ffffff', border: '#333' },
-                { bg: '#ffffff', panel: '#f0f0f0', text: '#000000', border: '#ddd' }
-            ];
-            bgMode = (bgMode + 1) % 3;
-            const theme = themes[bgMode];
-            const root = document.documentElement;
-            root.style.setProperty('--bg-color', theme.bg);
-            root.style.setProperty('--panel-bg', theme.panel);
-            root.style.setProperty('--text-color', theme.text);
-            root.style.setProperty('--border-color', theme.border);
-        }
-
         function nextImage() { if(images.length === 0) return; if(hmActive) exitHardMode(); historyStack.push(currentIndex); currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; loadImage(); resetTimer(); playSound(); }
         function prevImage() { if(historyStack.length > 0) { if(hmActive) exitHardMode(); currentIndex = historyStack.pop(); loadImage(); resetTimer(); } }
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
@@ -234,6 +228,10 @@
         function updateTimerUI() { let m = Math.floor(remaining / 60); let s = remaining % 60; ui.timer.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; const total = hmActive ? hmPhases[hmPhase].s : timerSeconds; ui.prog.style.width = `${(remaining / total) * 100}%`; }
         function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊"; }
         function playSound() { if(!isMuted) { ui.sound.currentTime = 0; ui.sound.play().catch(()=>{}); } }
+        
+        // 元の背景変更ロジックを復元（余計な改変を破棄）
+        function cycleBg() { const colors = ['#000', '#2e2e2e', '#fff']; bgMode = (bgMode + 1) % 3; document.documentElement.style.setProperty('--bg-color', colors[bgMode]); }
+        
         function toggleHardMode() { hmActive ? exitHardMode() : startHardMode(); }
         function startHardMode() { if(images.length === 0) return; hmActive = true; ui.hmBtn.classList.add("active"); setHmPhase(1); startTimer(); }
         function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; ui.btnHmShow.style.display = 'none'; ui.btnHmHide.style.display = 'none'; applyFilters(); resetTimer(); }
