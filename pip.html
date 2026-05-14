@@ -3,14 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Croquis App (PiP Edition)</title>
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Croquis PiP">
-    
-    <link rel="manifest" href="manifest.json">
-
+    <title>Croquis App (PiP Edition v2)</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #1a1a1a; --btn-bg: #333; --accent: #00d4ff; --hm-color: #ffb020; --pip-color: #ff4785; }
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
@@ -72,12 +65,10 @@
         <button onclick="setTimer(60)">1m</button>
         <button onclick="setTimer(120)">2m</button>
         <button onclick="setTimer(300)">5m</button>
-        <button onclick="setTimer(600)">10m</button>
-        <span class="separator">|</span>
+        <button onclick="setTimer(600)">10m</button> <span class="separator">|</span>
         <button id="shuffle-btn" onclick="toggle('shuffle')" class="active">🔀</button>
         <button id="flipH-btn" onclick="toggle('flipH')">⇄</button>
-        <button id="flipV-btn" onclick="toggle('flipV')">⇅</button>
-        <button id="grid-btn" onclick="toggle('grid')">#</button>
+        <button id="flipV-btn" onclick="toggle('flipV')">⇅</button> <button id="grid-btn" onclick="toggle('grid')">#</button>
         <button id="mono-btn" onclick="toggle('mono')">🌗</button>
         <button id="hide-btn" onclick="toggle('hide')">👁</button>
         <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()">🧠</button>
