@@ -22,7 +22,6 @@
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* トップパネルのレイアウト: デフォルト（PC） */
         #top-panel { position: relative; height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid var(--border-color); }
         .top-left { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 150px; }
         .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1; max-width: 150px; }
@@ -33,7 +32,8 @@
         .icon-btn { background: none; border: none; color: #888; cursor: pointer; padding: 5px; display: flex; justify-content: center; align-items: center; }
         .icon-btn:hover { color: #fff; }
         
-        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; }
+        /* touch-action: none; を追加し、スワイプ時のブラウザ誤動作を防止 */
+        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; touch-action: none; }
         #canvas-area { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; }
         #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(128,128,128,0.4); background-image: linear-gradient(to right, rgba(128,128,128,0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.4) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
@@ -74,14 +74,13 @@
         
         .text-btn { font-size: 0.75rem; padding: 4px 8px; min-width: auto; }
 
-        /* iPhone・スマホ用レスポンシブ設定（タイマーとアイコンの衝突を完全に防ぐ） */
         @media (max-width: 440px) {
             #top-panel { padding: 0 8px; }
             .top-left { max-width: 85px; gap: 4px; }
             .top-right { max-width: 105px; gap: 4px; }
             .icon-btn { padding: 3px; }
-            .svg-icon { width: 18px; height: 18px; } /* アイコンを少し小さく */
-            #timer-label { font-size: 1.5rem; letter-spacing: 1px; } /* タイマーをコンパクトに */
+            .svg-icon { width: 18px; height: 18px; }
+            #timer-label { font-size: 1.5rem; letter-spacing: 1px; }
             #phase-label { font-size: 0.7rem; }
         }
     </style>
@@ -111,7 +110,7 @@
 
     <div id="image-container">
         <div id="canvas-area">
-            <img id="main-image" src="">
+            <img id="main-image" src="" draggable="false">
             <div id="grid-overlay"></div>
         </div>
     </div>
@@ -232,7 +231,6 @@
             ui.img.style.display = 'block';
             ui.img.onload = applyFilters;
             
-            // 安全装置：万が一画像ファイルが破損等で読み込めなかったら即座に次へスキップ
             ui.img.onerror = () => {
                 console.warn("画像の読み込みに失敗したためスキップします:", images[currentIndex].name);
                 nextImage();
@@ -408,11 +406,52 @@
             } 
         }
 
+        // --- キーボードショートカット ---
         document.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'SELECT' || document.activeElement.tagName === 'INPUT') return;
             if (e.code === 'Space') { e.preventDefault(); toggleTimer(); } 
             else if (e.code === 'ArrowRight') { nextImage(); } 
             else if (e.code === 'ArrowLeft') { prevImage(); }
+        });
+
+        // --- ジェスチャー操作（スワイプ＆ダブルタップ） ---
+        let pointerStartX = 0;
+        let lastTapTime = 0;
+        const imgContainer = document.getElementById('image-container');
+
+        // タッチやマウス、ペンが画面に触れた時の座標を記録
+        imgContainer.addEventListener('pointerdown', (e) => {
+            pointerStartX = e.clientX;
+        });
+
+        // 離した時の座標を計算して動作を決定
+        imgContainer.addEventListener('pointerup', (e) => {
+            const pointerEndX = e.clientX;
+            const diffX = pointerStartX - pointerEndX;
+            const threshold = 50; // 50px以上動かした場合のみスワイプと判定（誤操作防止）
+
+            if (Math.abs(diffX) > threshold) {
+                // スワイプ処理
+                if (diffX > 0) {
+                    nextImage(); // 左にスワイプ ➔ 次へ
+                } else {
+                    prevImage(); // 右にスワイプ ➔ 前へ
+                }
+                lastTapTime = 0; // スワイプした時はダブルタップ判定をリセット
+            } else {
+                // タップ（クリック）処理
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTapTime;
+                
+                // 300ミリ秒以内に2回連続でタップされた場合（ダブルタップ）
+                if (tapLength < 300 && tapLength > 0) {
+                    toggleTimer(); // 再生 / 一時停止
+                    lastTapTime = 0; // 判定リセット
+                    e.preventDefault();
+                } else {
+                    lastTapTime = currentTime; // 1回目のタップ時間を記録
+                }
+            }
         });
     </script>
 </body>
