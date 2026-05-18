@@ -22,10 +22,10 @@
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* トップパネルのレイアウト修正: タイマーを絶対的な中央に配置 */
+        /* トップパネルのレイアウト: デフォルト（PC） */
         #top-panel { position: relative; height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid var(--border-color); }
-        .top-left { display: flex; align-items: center; gap: 10px; width: 150px; }
-        .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 150px; }
+        .top-left { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 150px; }
+        .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1; max-width: 150px; }
         
         #phase-label { color: var(--hm-color); font-weight: bold; font-size: 0.8rem; white-space: nowrap; }
         #timer-label { position: absolute; left: 50%; transform: translateX(-50%); font-size: 1.8rem; font-weight: bold; text-align: center; color: var(--accent); letter-spacing: 2px; }
@@ -66,15 +66,24 @@
         
         .separator { color: #333; align-self: center; font-size: 1.2rem; margin: 0 4px; font-weight: 100; }
 
-        /* SVGアイコンの共通スタイル */
         .svg-icon { width: 20px; height: 20px; fill: currentColor; pointer-events: none; }
-        .svg-small { width: 16px; height: 16px; }
         
         select { outline: none; text-align: center; font-weight: bold; appearance: none; -webkit-appearance: none; padding: 8px 16px; background-color: var(--btn-bg); color: #ddd; border: none; border-radius: 4px; cursor: pointer; }
         select:focus { outline: 1px solid var(--accent); }
         select:hover { background-color: #333; }
         
         .text-btn { font-size: 0.75rem; padding: 4px 8px; min-width: auto; }
+
+        /* iPhone・スマホ用レスポンシブ設定（タイマーとアイコンの衝突を完全に防ぐ） */
+        @media (max-width: 440px) {
+            #top-panel { padding: 0 8px; }
+            .top-left { max-width: 85px; gap: 4px; }
+            .top-right { max-width: 105px; gap: 4px; }
+            .icon-btn { padding: 3px; }
+            .svg-icon { width: 18px; height: 18px; } /* アイコンを少し小さく */
+            #timer-label { font-size: 1.5rem; letter-spacing: 1px; } /* タイマーをコンパクトに */
+            #phase-label { font-size: 0.7rem; }
+        }
     </style>
 </head>
 <body>
@@ -181,7 +190,6 @@
         const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
         let currentImageUrl = null, expectedEndTime = 0, resizeTimer;
 
-        // JSで切り替えるためのSVGパス定数
         const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
         const iconPauseSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
         const iconVolSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
@@ -223,6 +231,13 @@
             ui.img.src = currentImageUrl;
             ui.img.style.display = 'block';
             ui.img.onload = applyFilters;
+            
+            // 安全装置：万が一画像ファイルが破損等で読み込めなかったら即座に次へスキップ
+            ui.img.onerror = () => {
+                console.warn("画像の読み込みに失敗したためスキップします:", images[currentIndex].name);
+                nextImage();
+            };
+
             if(settings.hide && !hmActive) { hideTimeout = setTimeout(() => { isImageHidden = true; applyFilters(); }, 5000); }
         }
 
