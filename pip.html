@@ -14,7 +14,7 @@
 
     <style>
         :root { 
-            --bg-color: #1e1e1e; /* 起動確認のために初期状態をダークグレーに */
+            --bg-color: #1e1e1e;
             --panel-bg: #111; 
             --text-color: #fff; 
             --border-color: #333;
@@ -197,11 +197,23 @@
         const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
         let currentImageUrl = null, expectedEndTime = 0, resizeTimer;
 
-        // PiP環境の安全な初期化（非対応ブラウザでスクリプト全体が死なないようにする）
+        // PiP環境の安全な初期化（DOMへの追加によるブラウザ制限の回避）
         let pipVideo, pipCanvas, pipCtx, isPiP = false;
         try {
             pipVideo = document.createElement('video');
-            pipVideo.muted = true; pipVideo.playsInline = true;
+            pipVideo.muted = true; 
+            pipVideo.playsInline = true;
+            
+            // 一部のブラウザ対策として画面の裏側にひっそりと配置する
+            pipVideo.style.position = 'fixed';
+            pipVideo.style.bottom = '0';
+            pipVideo.style.right = '0';
+            pipVideo.style.width = '1px';
+            pipVideo.style.height = '1px';
+            pipVideo.style.opacity = '0.01';
+            pipVideo.style.pointerEvents = 'none';
+            document.body.appendChild(pipVideo); // ここが重要
+
             pipCanvas = document.createElement('canvas');
             pipCtx = pipCanvas.getContext('2d');
         } catch(e) { console.warn("PiP Init Error:", e); }
@@ -341,23 +353,39 @@
         function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); updateTimerUI(); }
         function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
 
-        // --- 小窓 (PiP) の完全同期処理 ---
+        // --- 小窓 (PiP) の完全同期処理 (各ブラウザ対応版) ---
         async function togglePiP() {
             if (!pipCanvas || typeof pipCanvas.captureStream !== 'function') {
-                alert("お使いのブラウザはPiP描画機能に未対応のようです。"); return;
+                alert("お使いのブラウザはPiP（小窓描画）機能に未対応です。"); return;
             }
-            if (document.pictureInPictureElement) {
-                await document.exitPictureInPicture().catch(function(e){console.error(e)});
+            
+            // すでに小窓が開いているかのチェック（Safari対応含む）
+            const isPiPOpen = document.pictureInPictureElement || (pipVideo.webkitPresentationMode === 'picture-in-picture');
+
+            if (isPiPOpen) {
+                if (document.exitPictureInPicture) {
+                    await document.exitPictureInPicture().catch(function(e){console.error(e)});
+                } else if (pipVideo.webkitSetPresentationMode) {
+                    pipVideo.webkitSetPresentationMode('inline');
+                }
             } else {
                 if (images.length === 0) { alert("まずは画像を読み込んでください"); return; }
                 try {
                     if (!pipVideo.srcObject) {
                         pipVideo.srcObject = pipCanvas.captureStream(30); 
-                        await pipVideo.play();
                     }
+                    await pipVideo.play();
                     isPiP = true;
                     updatePiP(); 
-                    await pipVideo.requestPictureInPicture();
+                    
+                    // ブラウザごとの小窓化命令を呼び分ける
+                    if (typeof pipVideo.requestPictureInPicture === 'function') {
+                        await pipVideo.requestPictureInPicture(); // Chrome, Edge系
+                    } else if (typeof pipVideo.webkitSetPresentationMode === 'function') {
+                        pipVideo.webkitSetPresentationMode('picture-in-picture'); // Safari系
+                    } else {
+                        throw new Error("ご利用のブラウザは小窓化APIに未対応です。ChromeかEdgeをご利用ください。");
+                    }
                 } catch (error) {
                     isPiP = false;
                     alert("小窓化に失敗しました: " + error.message);
@@ -368,6 +396,15 @@
         if(pipVideo) {
             pipVideo.addEventListener('leavepictureinpicture', function() { isPiP = false; ui.pipBtn.classList.remove('pip-active'); });
             pipVideo.addEventListener('enterpictureinpicture', function() { isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP(); });
+            
+            // Safari用のイベントリスナー
+            pipVideo.addEventListener('webkitpresentationmodechanged', function() {
+                if (pipVideo.webkitPresentationMode === 'picture-in-picture') {
+                    isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP();
+                } else {
+                    isPiP = false; ui.pipBtn.classList.remove('pip-active');
+                }
+            });
         }
 
         function updatePiP() {
