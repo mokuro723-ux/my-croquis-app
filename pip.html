@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>最強Croquis App (診断モード)</title>
+    <title>最強Croquis App (PiP完全フルスペック版)</title>
     
     <script>
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            document.body.innerHTML = '<div style="color:red; background:white; padding:20px; font-size:16px; margin:20px; border-radius:8px;">' +
-                '<b>致命的なエラーが発生しました:</b><br>' + msg + '<br>行: ' + lineNo +
-                '<br><br>※この画面が出た場合は、ブラウザが非対応か、コピペ時にコードが欠けている可能性があります。</div>';
+        window.onerror = function(msg, url, lineNo) {
+            document.body.innerHTML = '<div style="color:red; background:white; padding:20px;"><b>エラー発生:</b><br>' + msg + '<br>行: ' + lineNo + '</div>';
             return false;
         };
     </script>
 
     <style>
         :root { 
-            --bg-color: #1e1e1e; /* 真っ黒ではなくダークグレーに変更して起動確認しやすくしました */
+            --bg-color: #1e1e1e; /* 起動確認のために初期状態をダークグレーに */
             --panel-bg: #111; 
             --text-color: #fff; 
             --border-color: #333;
@@ -56,7 +54,7 @@
         #progress-container { width: 100%; height: 4px; background-color: #222; }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 0.2s linear; }
         
-        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 200px; opacity: 1; overflow: hidden; }
+        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 250px; opacity: 1; overflow: hidden; }
         #bottom-panel.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; border-top: 0px solid transparent; opacity: 0; }
         
         button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 45px; display: flex; justify-content: center; align-items: center; font-size: 0.9rem;}
@@ -90,7 +88,7 @@
 <body>
     <div id="top-panel">
         <div class="top-left">
-            <button class="icon-btn" onclick="toggleHistoryPanel()">
+            <button class="icon-btn" onclick="toggleHistoryPanel()" title="履歴">
                 <svg viewBox="0 0 24 24" class="svg-icon"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
             </button>
             <div id="phase-label"></div>
@@ -101,13 +99,13 @@
         <div id="timer-label">00:30</div>
         
         <div class="top-right">
-            <button class="icon-btn" id="bg-btn" onclick="cycleBg()">
+            <button class="icon-btn" id="bg-btn" onclick="cycleBg()" title="背景色">
                 <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
             </button>
-            <button class="icon-btn" id="mute-btn" onclick="toggleMute()">
+            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="ミュート">
                 <svg viewBox="0 0 24 24" class="svg-icon" id="icon-vol"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
             </button>
-            <button class="icon-btn" onclick="toggleBottomPanel()">
+            <button class="icon-btn" onclick="toggleBottomPanel()" title="メニュー開閉">
                 <svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
             </button>
         </div>
@@ -115,7 +113,7 @@
 
     <div id="history-panel">
         <div id="history-header">
-            <span>履歴</span>
+            <span>履歴 (答え合わせ)</span>
             <button class="icon-btn" onclick="toggleHistoryPanel()">
                 <svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </button>
@@ -137,7 +135,7 @@
         <input type="file" id="file-input" multiple accept="image/*" style="display:none;">
         
         <button class="text-btn" onclick="document.getElementById('folder-input').click()">📁 フォルダ</button>
-        <button class="text-btn" onclick="document.getElementById('file-input').click()">📄 画像</button>
+        <button class="text-btn" onclick="document.getElementById('file-input').click()">📄 複数画像</button>
         
         <span class="separator">|</span>
 
@@ -151,16 +149,43 @@
             <option value="30">30s</option>
             <option value="60">1m</option>
             <option value="120">2m</option>
+            <option value="180">3m</option>
             <option value="300">5m</option>
             <option value="600">10m</option>
         </select>
         
         <span class="separator">|</span>
         
-        <button id="shuffle-btn" onclick="toggle('shuffle')" class="active">シャッフル</button>
-        <button id="pip-btn" onclick="togglePiP()">小窓(PiP)</button>
-        <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()">ハード</button>
+        <button id="shuffle-btn" onclick="toggle('shuffle')" class="active" title="シャッフル">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+        </button>
+        <button id="flipH-btn" onclick="toggle('flipH')" title="左右反転">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M10,6 L4,12 L10,18 Z" /><rect x="11" y="4" width="2" height="16" /><path d="M14,6 L20,12 L14,18 Z" /></svg>
+        </button>
+        <button id="flipV-btn" onclick="toggle('flipV')" title="上下反転">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M6,10 L12,4 L18,10 Z" /><rect x="4" y="11" width="16" height="2" /><path d="M6,14 L12,20 L18,14 Z" /></svg>
+        </button>
+        <button id="grid-btn" onclick="toggle('grid')" title="グリッド">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
+        </button>
+        <button id="mono-btn" onclick="toggle('mono')" title="モノクロ">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17.93c3.95.49 7 3.85 7 7.93s-3.05 7.44-7 7.93V4.07z"/></svg>
+        </button>
+        <button id="hide-btn" onclick="toggle('hide')" title="5秒で隠す">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        </button>
+        
+        <span class="separator">|</span>
+        
+        <button id="pip-btn" onclick="togglePiP()" title="小窓(PiP)">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
+        </button>
+        <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()" title="ハードモード">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M13,2.05v9h6L7,22v-9H2L13,2.05z"/></svg>
+        </button>
     </div>
+
+    <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
 
     <script>
         let images = [], currentIndex = 0;
@@ -169,38 +194,38 @@
         let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false, hide: false };
         let isMuted = false, bgMode = 0, isImageHidden = false, hideTimeout;
         let hmActive = false, hmPhase = 0;
-        const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
-        let currentImageUrl = null, expectedEndTime = 0;
+        const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
+        let currentImageUrl = null, expectedEndTime = 0, resizeTimer;
 
-        // PiPの初期化（一部端末でのエラーを防ぐためにtry-catchで囲む）
+        // PiP環境の安全な初期化（非対応ブラウザでスクリプト全体が死なないようにする）
         let pipVideo, pipCanvas, pipCtx, isPiP = false;
         try {
             pipVideo = document.createElement('video');
             pipVideo.muted = true; pipVideo.playsInline = true;
             pipCanvas = document.createElement('canvas');
             pipCtx = pipCanvas.getContext('2d');
-        } catch(e) {
-            console.warn("PiP初期化エラー", e);
-        }
+        } catch(e) { console.warn("PiP Init Error:", e); }
+
+        const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
+        const iconPauseSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        const iconVolSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+        const iconMuteSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>`;
 
         const ui = {
             img: document.getElementById('main-image'), timer: document.getElementById('timer-label'),
             prog: document.getElementById('progress-bar'), playBtn: document.getElementById('play-btn'),
-            grid: document.getElementById('grid-overlay'), phase: document.getElementById('phase-label'),
-            hmBtn: document.getElementById('hm-btn'), btnHmShow: document.getElementById('btn-hm-show'),
-            btnHmHide: document.getElementById('btn-hm-hide'), pipBtn: document.getElementById('pip-btn')
+            grid: document.getElementById('grid-overlay'), sound: document.getElementById('sound-player'),
+            phase: document.getElementById('phase-label'), hmBtn: document.getElementById('hm-btn'),
+            btnHmShow: document.getElementById('btn-hm-show'), btnHmHide: document.getElementById('btn-hm-hide'),
+            muteBtn: document.getElementById('mute-btn'), pipBtn: document.getElementById('pip-btn')
         };
 
         function toggleBottomPanel() { document.getElementById('bottom-panel').classList.toggle('hidden'); }
 
         function handleFiles(e) {
-            try {
-                const files = Array.from(e.target.files).filter(function(f) { return f.type.startsWith('image/'); });
-                if(files.length > 0) { images = files; if(settings.shuffle) shuffleArray(images); currentIndex = 0; historyList = [currentIndex]; historyPos = 0; loadImage(); }
-                e.target.value = ''; 
-            } catch(error) {
-                alert("ファイル読み込みエラー: " + error.message);
-            }
+            const files = Array.from(e.target.files).filter(function(f) { return f.type.startsWith('image/'); });
+            if(files.length > 0) { images = files; if(settings.shuffle) shuffleArray(images); currentIndex = 0; historyList = [currentIndex]; historyPos = 0; loadImage(); }
+            e.target.value = ''; 
         }
 
         document.getElementById('folder-input').addEventListener('change', handleFiles);
@@ -217,17 +242,36 @@
             ui.img.src = currentImageUrl;
             ui.img.style.display = 'block';
             ui.img.onload = applyFilters;
+            ui.img.onerror = function() { nextImage(); };
+            if(settings.hide && !hmActive) { hideTimeout = setTimeout(function() { isImageHidden = true; applyFilters(); }, 5000); }
         }
 
         function applyFilters() {
+            let transform = '';
+            if(settings.flipH) transform += 'scaleX(-1) ';
+            if(settings.flipV) transform += 'scaleY(-1) ';
+            ui.img.style.transform = transform;
+            ui.img.style.filter = settings.mono ? 'grayscale(100%)' : 'none';
             ui.img.style.opacity = isImageHidden ? '0' : '1';
+            
+            if(settings.grid && !isImageHidden && ui.img.complete) {
+                ui.grid.style.display = 'block';
+                ui.grid.style.width = ui.img.offsetWidth + 'px';
+                ui.grid.style.height = ui.img.offsetHeight + 'px';
+                ui.grid.style.left = ui.img.offsetLeft + 'px';
+                ui.grid.style.top = ui.img.offsetTop + 'px';
+            } else { ui.grid.style.display = 'none'; }
+            
             if (isPiP) updatePiP();
         }
+
+        window.addEventListener('resize', function() { clearTimeout(resizeTimer); resizeTimer = setTimeout(applyFilters, 100); });
         
         function toggle(key) { 
             settings[key] = !settings[key]; 
             const btn = document.getElementById(key + '-btn');
             if(btn) { if(settings[key]) { btn.classList.add("active"); } else { btn.classList.remove("active"); } }
+            if(key === 'hide' && !settings.hide) isImageHidden = false;
             applyFilters(); 
         }
 
@@ -236,22 +280,40 @@
             if(hmActive) exitHardMode(); 
             if (historyPos < historyList.length - 1) { historyPos++; currentIndex = historyList[historyPos]; } 
             else { currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; historyList.push(currentIndex); if (historyList.length > 100) { historyList.shift(); } else { historyPos++; } }
-            loadImage(); resetTimer(); 
+            loadImage(); resetTimer(); playSound(); 
+            if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
         }
 
         function prevImage() { 
-            if (historyPos > 0) { if (hmActive) exitHardMode(); historyPos--; currentIndex = historyList[historyPos]; loadImage(); resetTimer(); } 
+            if (historyPos > 0) { if (hmActive) exitHardMode(); historyPos--; currentIndex = historyList[historyPos]; loadImage(); resetTimer(); if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs(); } 
         }
 
         function toggleHistoryPanel() {
             const panel = document.getElementById('history-panel');
-            if (panel.classList.contains('open')) { panel.classList.remove('open'); } 
-            else { panel.classList.add('open'); }
+            if (panel.classList.contains('open')) { panel.classList.remove('open'); clearHistoryThumbs(); } 
+            else { panel.classList.add('open'); renderHistoryThumbs(); }
         }
+
+        function clearHistoryThumbs() { document.getElementById('history-content').innerHTML = ''; historyUrls.forEach(function(url) { URL.revokeObjectURL(url); }); historyUrls = []; }
+
+        function renderHistoryThumbs() {
+            const content = document.getElementById('history-content');
+            clearHistoryThumbs();
+            const start = Math.max(0, historyList.length - 30);
+            for (let i = historyList.length - 1; i >= start; i--) {
+                const imgIndex = historyList[i]; const file = images[imgIndex]; if(!file) continue;
+                const url = URL.createObjectURL(file); historyUrls.push(url);
+                const imgEl = document.createElement('img'); imgEl.src = url; imgEl.className = 'history-thumb' + (i === historyPos ? ' current' : '');
+                imgEl.onclick = (function(idx) { return function() { jumpToHistory(idx); if(window.innerWidth <= 440) toggleHistoryPanel(); }; })(i);
+                content.appendChild(imgEl);
+            }
+        }
+
+        function jumpToHistory(index) { historyPos = index; currentIndex = historyList[historyPos]; if (hmActive) exitHardMode(); loadImage(); resetTimer(); stopTimer(); renderHistoryThumbs(); }
         
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
-        function startTimer() { isRunning = true; ui.playBtn.innerHTML = "⏸"; ui.playBtn.classList.remove("accent"); expectedEndTime = Date.now() + (remaining * 1000); clearInterval(timerInterval); timerInterval = setInterval(tick, 200); }
-        function stopTimer() { isRunning = false; ui.playBtn.innerHTML = "▶"; ui.playBtn.classList.add("accent"); clearInterval(timerInterval); }
+        function startTimer() { isRunning = true; ui.playBtn.innerHTML = iconPauseSVG; ui.playBtn.classList.remove("accent"); expectedEndTime = Date.now() + (remaining * 1000); clearInterval(timerInterval); timerInterval = setInterval(tick, 200); }
+        function stopTimer() { isRunning = false; ui.playBtn.innerHTML = iconPlaySVG; ui.playBtn.classList.add("accent"); clearInterval(timerInterval); }
         function tick() { 
             const now = Date.now(); remaining = Math.ceil((expectedEndTime - now) / 1000); 
             if(remaining <= 0) { remaining = 0; updateTimerUI(); hmActive ? hmNextPhase() : nextImage(); } 
@@ -259,7 +321,7 @@
         }
         
         function resetTimer() { remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); updateTimerUI(); }
-        function setTimer(sec) { exitHardMode(); timerSeconds = sec; resetTimer(); }
+        function setTimer(sec) { exitHardMode(); timerSeconds = sec; const select = document.getElementById('time-select'); if (select) select.value = sec; resetTimer(); }
         
         function updateTimerUI() { 
             let m = Math.floor(remaining / 60); let s = remaining % 60; 
@@ -269,18 +331,20 @@
             if (isPiP) updatePiP(); 
         }
         
+        function toggleMute() { isMuted = !isMuted; ui.muteBtn.innerHTML = isMuted ? iconMuteSVG : iconVolSVG; }
+        function playSound() { if(!isMuted && ui.sound) { ui.sound.currentTime = 0; ui.sound.play().catch(function(){}); } }
         function cycleBg() { const colors = ['#1e1e1e', '#000', '#fff']; bgMode = (bgMode + 1) % 3; document.documentElement.style.setProperty('--bg-color', colors[bgMode]); if(isPiP) updatePiP(); }
-        function toggleMute() { isMuted = !isMuted; }
         
         function toggleHardMode() { hmActive ? exitHardMode() : startHardMode(); }
         function startHardMode() { if(images.length === 0) return; hmActive = true; ui.hmBtn.classList.add("active"); setHmPhase(1); startTimer(); }
         function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; ui.btnHmShow.style.display = 'none'; ui.btnHmHide.style.display = 'none'; applyFilters(); resetTimer(); }
-        function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); updateTimerUI(); }
-        function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; } }
+        function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); updateTimerUI(); }
+        function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
 
+        // --- 小窓 (PiP) の完全同期処理 ---
         async function togglePiP() {
             if (!pipCanvas || typeof pipCanvas.captureStream !== 'function') {
-                alert("お使いのブラウザはPiP（小窓）描画機能に未対応です。"); return;
+                alert("お使いのブラウザはPiP描画機能に未対応のようです。"); return;
             }
             if (document.pictureInPictureElement) {
                 await document.exitPictureInPicture().catch(function(e){console.error(e)});
@@ -296,7 +360,7 @@
                     await pipVideo.requestPictureInPicture();
                 } catch (error) {
                     isPiP = false;
-                    alert("小窓化エラー: " + error.message);
+                    alert("小窓化に失敗しました: " + error.message);
                 }
             }
         }
@@ -318,13 +382,37 @@
             }
             
             pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
+            pipCtx.save();
+            
+            // 1. 背景色
             pipCtx.fillStyle = bgMode === 0 ? '#1e1e1e' : (bgMode === 1 ? '#000' : '#fff');
             pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
             
+            // 2. 画像の描画 (反転・白黒の適用)
             if(!isImageHidden) {
-                pipCtx.drawImage(ui.img, 0, 0, pipCanvas.width, pipCanvas.height);
+                pipCtx.translate(pipCanvas.width/2, pipCanvas.height/2);
+                if(settings.flipH) pipCtx.scale(-1, 1);
+                if(settings.flipV) pipCtx.scale(1, -1);
+                if(settings.mono) pipCtx.filter = 'grayscale(100%)';
+                
+                pipCtx.drawImage(ui.img, -pipCanvas.width/2, -pipCanvas.height/2, pipCanvas.width, pipCanvas.height);
+                
+                // グリッド描画
+                if(settings.grid) {
+                    pipCtx.filter = 'none'; 
+                    pipCtx.strokeStyle = 'rgba(128,128,128,0.4)';
+                    pipCtx.lineWidth = Math.max(2, pipCanvas.width / 200);
+                    pipCtx.beginPath();
+                    pipCtx.moveTo(-pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(-pipCanvas.width/6, pipCanvas.height/2);
+                    pipCtx.moveTo(pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(pipCanvas.width/6, pipCanvas.height/2);
+                    pipCtx.moveTo(-pipCanvas.width/2, -pipCanvas.height/6); pipCtx.lineTo(pipCanvas.width/2, -pipCanvas.height/6);
+                    pipCtx.moveTo(-pipCanvas.width/2, pipCanvas.height/6); pipCtx.lineTo(pipCanvas.width/2, pipCanvas.height/6);
+                    pipCtx.stroke();
+                }
             }
+            pipCtx.restore();
 
+            // 3. タイマーとプログレスバー
             const barHeight = Math.max(10, pipCanvas.height * 0.02);
             const total = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
             const progWidth = (remaining / total) * pipCanvas.width;
@@ -345,6 +433,23 @@
             pipCtx.fillStyle = '#00d4ff';
             pipCtx.fillText(timeText, fontSize/2, fontSize/4);
         }
+
+        // スワイプ操作
+        let pointerStartX = 0; let lastTapTime = 0; const imgContainer = document.getElementById('image-container');
+        imgContainer.addEventListener('pointerdown', function(e) { pointerStartX = e.clientX; });
+        imgContainer.addEventListener('pointerup', function(e) {
+            const pointerEndX = e.clientX; const diffX = pointerStartX - pointerEndX; const threshold = 50;
+            if (Math.abs(diffX) > threshold) { if (diffX > 0) { nextImage(); } else { prevImage(); } lastTapTime = 0; } 
+            else { const currentTime = new Date().getTime(); const tapLength = currentTime - lastTapTime; if (tapLength < 300 && tapLength > 0) { toggleTimer(); lastTapTime = 0; e.preventDefault(); } else { lastTapTime = currentTime; } }
+        });
+        
+        // キーボード操作
+        document.addEventListener('keydown', function(e) {
+            if (document.activeElement.tagName === 'SELECT' || document.activeElement.tagName === 'INPUT') return;
+            if (e.code === 'Space') { e.preventDefault(); toggleTimer(); } 
+            else if (e.code === 'ArrowRight') { nextImage(); } 
+            else if (e.code === 'ArrowLeft') { prevImage(); }
+        });
     </script>
 </body>
 </html>
