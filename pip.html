@@ -3,59 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Croquis App (PiP Edition v2)</title>
+    <title>Croquis App (PiP版)</title>
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Croquis">
-
     <style>
-        :root { --bg-color: #000; --panel-bg: #1a1a1a; --btn-bg: #333; --accent: #00d4ff; --hm-color: #ffb020; --pip-color: #ff4785; }
+        :root { 
+            --bg-color: #000; 
+            --panel-bg: #000; 
+            --text-color: #fff; 
+            --border-color: #1a1a1a;
+            --btn-bg: #222; 
+            --accent: #00d4ff; 
+            --hm-color: #ffb020; 
+        }
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
-        body { background-color: var(--bg-color); color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        #top-panel { height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid #333; }
-        #phase-label { color: var(--hm-color); font-weight: bold; width: 100px; font-size: 0.8rem; }
-        #timer-label { font-size: 1.8rem; font-weight: bold; flex-grow: 1; text-align: center; color: var(--accent); letter-spacing: 2px; }
-        .icon-btn { background: none; border: none; color: #888; font-size: 1.3rem; cursor: pointer; padding: 5px; }
+        #top-panel { position: relative; height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid var(--border-color); }
+        .top-left { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 150px; }
+        .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1; max-width: 150px; }
         
-        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; }
+        #phase-label { color: var(--hm-color); font-weight: bold; font-size: 0.8rem; white-space: nowrap; }
+        #timer-label { position: absolute; left: 50%; transform: translateX(-50%); font-size: 1.8rem; font-weight: bold; text-align: center; color: var(--accent); letter-spacing: 2px; }
+        
+        .icon-btn { background: none; border: none; color: #888; cursor: pointer; padding: 5px; display: flex; justify-content: center; align-items: center; }
+        .icon-btn:hover { color: #fff; }
+        
+        #history-panel {
+            position: absolute; top: 60px; left: 0; width: 260px; height: calc(100vh - 60px);
+            background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); border-right: 1px solid var(--border-color);
+            z-index: 90; transform: translateX(-100%); transition: transform 0.3s ease; display: flex; flex-direction: column;
+        }
+        #history-panel.open { transform: translateX(0); }
+        #history-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; color: var(--accent); font-weight: bold; }
+        #history-content { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; align-content: start; }
+        .history-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid transparent; background-color: #111; }
+        .history-thumb.current { border-color: var(--accent); }
+
+        #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; touch-action: none; }
         #canvas-area { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
-        #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(255,255,255,0.3); background-image: linear-gradient(to right, rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
+        #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; }
+        #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(128,128,128,0.4); background-image: linear-gradient(to right, rgba(128,128,128,0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.4) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
         
-        #progress-container { width: 100%; height: 4px; background-color: #222; }
+        #progress-container { width: 100%; height: 4px; background-color: #111; }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 0.2s linear; }
         
-        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid #333; }
-        button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; min-width: 45px; }
+        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 200px; opacity: 1; overflow: hidden; }
+        #bottom-panel.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; border-top: 0px solid transparent; opacity: 0; }
+        
+        button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 45px; display: flex; justify-content: center; align-items: center; font-size: 0.9rem;}
+        button:hover { background-color: #333; }
         button.active { background-color: #444; color: var(--accent); outline: 1px solid var(--accent); }
-        button.accent { background-color: var(--accent); color: #000; font-weight: bold; }
+        button.accent { background-color: var(--accent); color: #000; }
+        button.accent:hover { background-color: #00bfff; }
         button.hard-mode { color: var(--hm-color); }
-        button.hard-mode.active { background-color: var(--hm-color); color: black; }
-        button.pip-btn { color: var(--pip-color); font-weight: bold; }
-        button.pip-btn.active { background-color: var(--pip-color); color: white; }
-        .separator { color: #444; align-self: center; font-size: 1.2rem; margin: 0 4px; }
+        button.hard-mode.active { background-color: var(--hm-color); color: black; outline: none; }
+        button.pip-active { background-color: #444; color: #fff; outline: 1px solid #fff; }
+        
+        .separator { color: #333; align-self: center; font-size: 1.2rem; margin: 0 4px; font-weight: 100; }
+        .svg-icon { width: 20px; height: 20px; fill: currentColor; pointer-events: none; }
+        
+        select { outline: none; text-align: center; font-weight: bold; appearance: none; -webkit-appearance: none; padding: 8px 16px; background-color: var(--btn-bg); color: #ddd; border: none; border-radius: 4px; cursor: pointer; }
+        select:focus { outline: 1px solid var(--accent); }
+        select:hover { background-color: #333; }
+        .text-btn { font-size: 0.8rem; padding: 6px 10px; min-width: auto; font-weight: bold; }
 
-        /* iOSの制限回避：display:noneは使わず、透明で極小にして裏に隠す */
-        #pip-canvas, #pip-video { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -100; }
+        @media (max-width: 440px) {
+            #top-panel { padding: 0 8px; }
+            .top-left { max-width: 110px; gap: 4px; }
+            .top-right { max-width: 110px; gap: 4px; }
+            .icon-btn { padding: 3px; }
+            .svg-icon { width: 18px; height: 18px; }
+            #timer-label { font-size: 1.5rem; letter-spacing: 1px; }
+            #phase-label { font-size: 0.7rem; }
+            #history-panel { width: 100%; border-right: none; }
+            #history-content { grid-template-columns: repeat(3, 1fr); }
+            .text-btn { font-size: 0.75rem; padding: 6px 8px;}
+        }
     </style>
 </head>
 <body>
     <div id="top-panel">
-        <div id="phase-label"></div>
-        <div id="timer-label">00:30</div>
-        <div style="display:flex; gap:10px;">
-            <button id="btn-hm-show" onclick="isImageHidden=false; applyFilters();" style="display:none; font-size:0.7rem;">表示</button>
-            <button id="btn-hm-hide" onclick="isImageHidden=true; applyFilters();" style="display:none; font-size:0.7rem;">隠す</button>
-            <button class="icon-btn" id="bg-btn" onclick="cycleBg()">🎨</button>
-            <button class="icon-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+        <div class="top-left">
+            <button class="icon-btn" onclick="toggleHistoryPanel()" title="履歴（答え合わせ）">
+                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+            </button>
+            <div id="phase-label"></div>
+            <button class="text-btn" id="btn-hm-show" onclick="isImageHidden=false; applyFilters();" style="display:none;">表示</button>
+            <button class="text-btn" id="btn-hm-hide" onclick="isImageHidden=true; applyFilters();" style="display:none;">隠す</button>
         </div>
+        
+        <div id="timer-label">00:30</div>
+        
+        <div class="top-right">
+            <button class="icon-btn" id="bg-btn" onclick="cycleBg()" title="背景色変更">
+                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+            </button>
+            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="消音切替">
+                <svg viewBox="0 0 24 24" class="svg-icon" id="icon-vol"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            </button>
+            <button class="icon-btn" onclick="toggleBottomPanel()" title="メニュー開閉">
+                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="history-panel">
+        <div id="history-header">
+            <span>最近の画像 (答え合わせ)</span>
+            <button class="icon-btn" onclick="toggleHistoryPanel()">
+                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+        <div id="history-content"></div>
     </div>
 
     <div id="image-container">
         <div id="canvas-area">
-            <img id="main-image" src="">
+            <img id="main-image" src="" draggable="false">
             <div id="grid-overlay"></div>
         </div>
     </div>
@@ -64,179 +128,26 @@
 
     <div id="bottom-panel">
         <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;">
-        <button onclick="document.getElementById('folder-input').click()">📁</button>
-        <button onclick="prevImage()">|◁</button>
-        <button id="play-btn" class="accent" onclick="toggleTimer()">▷</button>
-        <button onclick="nextImage()">▷|</button>
+        <input type="file" id="file-input" multiple accept="image/*" style="display:none;">
+        
+        <button class="text-btn" onclick="document.getElementById('folder-input').click()" title="PC用: フォルダごと読み込む">📁 フォルダ</button>
+        <button class="text-btn" onclick="document.getElementById('file-input').click()" title="スマホ・タブレット用: 画像を複数選ぶ">📄 画像複数</button>
+        
         <span class="separator">|</span>
-        <button onclick="setTimer(30)">30s</button>
-        <button onclick="setTimer(60)">1m</button>
-        <button onclick="setTimer(120)">2m</button>
-        <button onclick="setTimer(300)">5m</button>
-        <button onclick="setTimer(600)">10m</button> <span class="separator">|</span>
-        <button id="shuffle-btn" onclick="toggle('shuffle')" class="active">🔀</button>
-        <button id="flipH-btn" onclick="toggle('flipH')">⇄</button>
-        <button id="flipV-btn" onclick="toggle('flipV')">⇅</button> <button id="grid-btn" onclick="toggle('grid')">#</button>
-        <button id="mono-btn" onclick="toggle('mono')">🌗</button>
-        <button id="hide-btn" onclick="toggle('hide')">👁</button>
-        <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()">🧠</button>
-        <button id="pip-btn" class="pip-btn" onclick="togglePiP()">📺 PiP</button>
-    </div>
 
-    <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
-    <canvas id="pip-canvas"></canvas>
-    <video id="pip-video" muted autoplay playsinline></video>
-
-    <script>
-        let images = [], currentIndex = 0, historyStack = [];
-        let timerSeconds = 30, remaining = 30, isRunning = false, timerInterval;
-        let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false, hide: false };
-        let isMuted = false, bgMode = 0, isImageHidden = false, hideTimeout;
-        let hmActive = false, hmPhase = 0;
-        const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
-        let currentImageUrl = null, expectedEndTime = 0, resizeTimer;
-
-        const ui = {
-            img: document.getElementById('main-image'), timer: document.getElementById('timer-label'),
-            prog: document.getElementById('progress-bar'), playBtn: document.getElementById('play-btn'),
-            grid: document.getElementById('grid-overlay'), sound: document.getElementById('sound-player'),
-            phase: document.getElementById('phase-label'), hmBtn: document.getElementById('hm-btn'),
-            btnHmShow: document.getElementById('btn-hm-show'), btnHmHide: document.getElementById('btn-hm-hide'),
-            pipBtn: document.getElementById('pip-btn')
-        };
-
-        const pipCanvas = document.getElementById('pip-canvas');
-        const pipCtx = pipCanvas.getContext('2d');
-        const pipVideo = document.getElementById('pip-video');
-
-        document.getElementById('folder-input').addEventListener('change', (e) => {
-            const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
-            if(files.length > 0) { images = files; if(settings.shuffle) shuffleArray(images); currentIndex = 0; loadImage(); }
-            e.target.value = '';
-        });
-
-        function shuffleArray(arr) { for(let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
-
-        function loadImage() {
-            if(images.length === 0) return;
-            clearTimeout(hideTimeout);
-            isImageHidden = false;
-            if (currentImageUrl) { URL.revokeObjectURL(currentImageUrl); }
-            currentImageUrl = URL.createObjectURL(images[currentIndex]);
-            ui.img.src = currentImageUrl;
-            ui.img.style.display = 'block';
-            ui.img.onload = applyFilters;
-            if(settings.hide && !hmActive) { hideTimeout = setTimeout(() => { isImageHidden = true; applyFilters(); }, 5000); }
-        }
-
-        function applyFilters() {
-            let transform = '';
-            if(settings.flipH) transform += 'scaleX(-1) ';
-            if(settings.flipV) transform += 'scaleY(-1) ';
-            ui.img.style.transform = transform;
-            ui.img.style.filter = settings.mono ? 'grayscale(100%)' : 'none';
-            ui.img.style.opacity = isImageHidden ? '0' : '1';
-            
-            if(settings.grid && !isImageHidden && ui.img.complete) {
-                ui.grid.style.display = 'block';
-                ui.grid.style.width = ui.img.offsetWidth + 'px';
-                ui.grid.style.height = ui.img.offsetHeight + 'px';
-                ui.grid.style.left = ui.img.offsetLeft + 'px';
-                ui.grid.style.top = ui.img.offsetTop + 'px';
-            } else { ui.grid.style.display = 'none'; }
-        }
-
-        function updatePiPStream() {
-            if (!ui.img.complete || ui.img.naturalWidth === 0) return;
-            
-            // 毎フレーム幅を代入するとクリアされてしまうため、変更時のみ更新
-            if (pipCanvas.width !== ui.img.naturalWidth) pipCanvas.width = ui.img.naturalWidth;
-            if (pipCanvas.height !== ui.img.naturalHeight) pipCanvas.height = ui.img.naturalHeight;
-            
-            pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
-            if (isImageHidden) {
-                pipCtx.fillStyle = '#1e1e1e';
-                pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
-            } else {
-                pipCtx.save();
-                pipCtx.translate(settings.flipH ? pipCanvas.width : 0, settings.flipV ? pipCanvas.height : 0);
-                pipCtx.scale(settings.flipH ? -1 : 1, settings.flipV ? -1 : 1);
-                if (settings.mono) { pipCtx.filter = 'grayscale(100%)'; }
-                pipCtx.drawImage(ui.img, 0, 0, pipCanvas.width, pipCanvas.height);
-                pipCtx.restore();
-            }
-            
-            if (!pipVideo.srcObject && pipCanvas.captureStream) { 
-                pipVideo.srcObject = pipCanvas.captureStream(30); 
-                pipVideo.play().catch(()=>{});
-            }
-        }
-
-        // iOSのストリーム停止回避：常に描画を回し続ける
-        function renderLoop() {
-            updatePiPStream();
-            requestAnimationFrame(renderLoop);
-        }
-        requestAnimationFrame(renderLoop);
-
-        // iOSのジェスチャー断絶回避：awaitを完全に排除し、同期的に実行する
-        function togglePiP() {
-            if (images.length === 0) { alert("画像を読み込んでください"); return; }
-            
-            pipVideo.play().catch(()=>{}); // とにかく再生を確約する
-
-            try {
-                if (document.pictureInPictureElement || (pipVideo.webkitPresentationMode === 'picture-in-picture')) {
-                    if (document.exitPictureInPicture) {
-                        document.exitPictureInPicture();
-                    } else if (pipVideo.webkitSetPresentationMode) {
-                        pipVideo.webkitSetPresentationMode('inline');
-                    }
-                } else {
-                    if (pipVideo.requestPictureInPicture) {
-                        pipVideo.requestPictureInPicture().catch(e => alert("PiPエラー: " + e.message));
-                    } else if (pipVideo.webkitSetPresentationMode) {
-                        pipVideo.webkitSetPresentationMode('picture-in-picture');
-                    } else {
-                        alert("PiP非対応のブラウザです");
-                    }
-                }
-            } catch (e) { 
-                alert("PiP非対応のブラウザです: " + e); 
-            }
-        }
-
-        pipVideo.addEventListener('enterpictureinpicture', () => ui.pipBtn.classList.add('active'));
-        pipVideo.addEventListener('leavepictureinpicture', () => ui.pipBtn.classList.remove('active'));
-        window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(applyFilters, 100); });
+        <button onclick="prevImage()" title="前の画像">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button id="play-btn" class="accent" onclick="toggleTimer()" title="再生 / 一時停止">
+            <svg viewBox="0 0 24 24" class="svg-icon" id="icon-play"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button onclick="nextImage()" title="次の画像">
+            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
         
-        function toggle(key) { 
-            settings[key] = !settings[key]; 
-            const btn = document.getElementById(key + '-btn');
-            if(btn) settings[key] ? btn.classList.add("active") : btn.classList.remove("active");
-            if(key === 'hide' && !settings.hide) isImageHidden = false;
-            applyFilters(); 
-        }
-        function nextImage() { if(images.length === 0) return; if(hmActive) exitHardMode(); historyStack.push(currentIndex); currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; loadImage(); resetTimer(); playSound(); }
-        function prevImage() { if(historyStack.length > 0) { if(hmActive) exitHardMode(); currentIndex = historyStack.pop(); loadImage(); resetTimer(); } }
-        function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
-        function startTimer() { isRunning = true; ui.playBtn.innerText = "⏸"; ui.playBtn.classList.remove("accent"); expectedEndTime = Date.now() + (remaining * 1000); timerInterval = setInterval(tick, 200); }
-        function stopTimer() { isRunning = false; ui.playBtn.innerText = "▷"; ui.playBtn.classList.add("accent"); clearInterval(timerInterval); }
-        function tick() { const now = Date.now(); remaining = Math.ceil((expectedEndTime - now) / 1000); if(remaining <= 0) { remaining = 0; updateTimerUI(); hmActive ? hmNextPhase() : nextImage(); } else { updateTimerUI(); } }
-        function resetTimer() { remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); updateTimerUI(); }
-        function setTimer(sec) { exitHardMode(); timerSeconds = sec; resetTimer(); }
-        function updateTimerUI() { let m = Math.floor(remaining / 60); let s = remaining % 60; ui.timer.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; const total = hmActive ? hmPhases[hmPhase].s : timerSeconds; ui.prog.style.width = `${(remaining / total) * 100}%`; }
-        function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊"; }
-        function playSound() { if(!isMuted) { ui.sound.currentTime = 0; ui.sound.play().catch(()=>{}); } }
+        <span class="separator">|</span>
         
-        // 元の背景変更ロジックを復元（余計な改変を破棄）
-        function cycleBg() { const colors = ['#000', '#2e2e2e', '#fff']; bgMode = (bgMode + 1) % 3; document.documentElement.style.setProperty('--bg-color', colors[bgMode]); }
-        
-        function toggleHardMode() { hmActive ? exitHardMode() : startHardMode(); }
-        function startHardMode() { if(images.length === 0) return; hmActive = true; ui.hmBtn.classList.add("active"); setHmPhase(1); startTimer(); }
-        function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; ui.btnHmShow.style.display = 'none'; ui.btnHmHide.style.display = 'none'; applyFilters(); resetTimer(); }
-        function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); updateTimerUI(); }
-        function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
-    </script>
-</body>
-</html>
+        <select id="time-select" onchange="setTimer(parseInt(this.value))">
+            <option value="30">30s</option>
+            <option value="60">1m</option>
+            <option value="12
