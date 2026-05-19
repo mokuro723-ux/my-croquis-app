@@ -32,7 +32,38 @@
         .icon-btn { background: none; border: none; color: #888; cursor: pointer; padding: 5px; display: flex; justify-content: center; align-items: center; }
         .icon-btn:hover { color: #fff; }
         
-        /* touch-action: none; を追加し、スワイプ時のブラウザ誤動作を防止 */
+        /* 履歴パネル（答え合わせ用） */
+        #history-panel {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            width: 260px;
+            height: calc(100vh - 60px);
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            border-right: 1px solid var(--border-color);
+            z-index: 90;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        #history-panel.open { transform: translateX(0); }
+        #history-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem; color: var(--accent); font-weight: bold;
+        }
+        #history-content {
+            flex: 1; overflow-y: auto; padding: 10px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; align-content: start;
+        }
+        .history-thumb {
+            width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px;
+            cursor: pointer; border: 2px solid transparent; background-color: #111;
+        }
+        .history-thumb.current { border-color: var(--accent); }
+
         #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; touch-action: none; }
         #canvas-area { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; }
@@ -42,17 +73,7 @@
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 0.2s linear; }
         
         #bottom-panel { 
-            background-color: var(--panel-bg); 
-            padding: 10px; 
-            display: flex; 
-            flex-wrap: wrap; 
-            justify-content: center; 
-            gap: 6px; 
-            border-top: 1px solid var(--border-color); 
-            transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
-            max-height: 150px; 
-            opacity: 1;
-            overflow: hidden;
+            background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 150px; opacity: 1; overflow: hidden;
         }
         #bottom-panel.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; border-top: 0px solid transparent; opacity: 0; }
         
@@ -65,29 +86,33 @@
         button.hard-mode.active { background-color: var(--hm-color); color: black; outline: none; }
         
         .separator { color: #333; align-self: center; font-size: 1.2rem; margin: 0 4px; font-weight: 100; }
-
         .svg-icon { width: 20px; height: 20px; fill: currentColor; pointer-events: none; }
         
         select { outline: none; text-align: center; font-weight: bold; appearance: none; -webkit-appearance: none; padding: 8px 16px; background-color: var(--btn-bg); color: #ddd; border: none; border-radius: 4px; cursor: pointer; }
         select:focus { outline: 1px solid var(--accent); }
         select:hover { background-color: #333; }
-        
         .text-btn { font-size: 0.75rem; padding: 4px 8px; min-width: auto; }
 
         @media (max-width: 440px) {
             #top-panel { padding: 0 8px; }
-            .top-left { max-width: 85px; gap: 4px; }
-            .top-right { max-width: 105px; gap: 4px; }
+            .top-left { max-width: 110px; gap: 4px; }
+            .top-right { max-width: 110px; gap: 4px; }
             .icon-btn { padding: 3px; }
             .svg-icon { width: 18px; height: 18px; }
             #timer-label { font-size: 1.5rem; letter-spacing: 1px; }
             #phase-label { font-size: 0.7rem; }
+            
+            #history-panel { width: 100%; border-right: none; }
+            #history-content { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
 <body>
     <div id="top-panel">
         <div class="top-left">
+            <button class="icon-btn" onclick="toggleHistoryPanel()" title="履歴（答え合わせ）">
+                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+            </button>
             <div id="phase-label"></div>
             <button class="text-btn" id="btn-hm-show" onclick="isImageHidden=false; applyFilters();" style="display:none;">表示</button>
             <button class="text-btn" id="btn-hm-hide" onclick="isImageHidden=true; applyFilters();" style="display:none;">隠す</button>
@@ -106,6 +131,16 @@
                 <svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
             </button>
         </div>
+    </div>
+
+    <div id="history-panel">
+        <div id="history-header">
+            <span>最近の画像 (答え合わせ)</span>
+            <button class="icon-btn" onclick="toggleHistoryPanel()">
+                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+        <div id="history-content"></div>
     </div>
 
     <div id="image-container">
@@ -152,27 +187,21 @@
         <button id="shuffle-btn" onclick="toggle('shuffle')" class="active" title="シャッフル">
             <svg viewBox="0 0 24 24" class="svg-icon"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
         </button>
-        
         <button id="flipH-btn" onclick="toggle('flipH')" title="左右反転">
             <svg viewBox="0 0 24 24" class="svg-icon"><path d="M10,6 L4,12 L10,18 Z" /><rect x="11" y="4" width="2" height="16" /><path d="M14,6 L20,12 L14,18 Z" /></svg>
         </button>
-        
         <button id="flipV-btn" onclick="toggle('flipV')" title="上下反転">
             <svg viewBox="0 0 24 24" class="svg-icon"><path d="M6,10 L12,4 L18,10 Z" /><rect x="4" y="11" width="16" height="2" /><path d="M6,14 L12,20 L18,14 Z" /></svg>
         </button>
-        
         <button id="grid-btn" onclick="toggle('grid')" title="グリッド">
             <svg viewBox="0 0 24 24" class="svg-icon"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
         </button>
-        
         <button id="mono-btn" onclick="toggle('mono')" title="モノクロ">
             <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17.93c3.95.49 7 3.85 7 7.93s-3.05 7.44-7 7.93V4.07z"/></svg>
         </button>
-        
         <button id="hide-btn" onclick="toggle('hide')" title="5秒で画像を隠す">
             <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
         </button>
-        
         <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()" title="ハードモード">
             <svg viewBox="0 0 24 24" class="svg-icon"><path d="M13,2.05v9h6L7,22v-9H2L13,2.05z"/></svg>
         </button>
@@ -181,7 +210,13 @@
     <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
 
     <script>
-        let images = [], currentIndex = 0, historyStack = [];
+        let images = [], currentIndex = 0;
+        
+        // --- 履歴管理用の変数 ---
+        let historyList = []; // 過去に表示した画像のインデックスを保存（最大100枚）
+        let historyPos = -1;  // 現在historyListのどこにいるかを示すポインタ
+        let historyUrls = []; // メモリ解放用のURL管理配列
+
         let timerSeconds = 30, remaining = 30, isRunning = false, timerInterval;
         let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false, hide: false };
         let isMuted = false, bgMode = 0, isImageHidden = false, hideTimeout;
@@ -214,6 +249,11 @@
                 images = files; 
                 if(settings.shuffle) shuffleArray(images); 
                 currentIndex = 0; 
+                
+                // フォルダ読み込み時に履歴を初期化
+                historyList = [currentIndex];
+                historyPos = 0;
+                
                 loadImage(); 
             }
             e.target.value = ''; 
@@ -271,24 +311,108 @@
             applyFilters(); 
         }
 
+        // --- 「戻る➔進む」の履歴管理システム ---
         function nextImage() { 
             if(images.length === 0) return; 
             if(hmActive) exitHardMode(); 
-            historyStack.push(currentIndex); 
-            currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; 
+            
+            if (historyPos < historyList.length - 1) {
+                // 戻っている途中なら、履歴を前へ辿る（ランダム再抽選しない）
+                historyPos++;
+                currentIndex = historyList[historyPos];
+            } else {
+                // 最新まで来たら新しい画像を引く
+                currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; 
+                historyList.push(currentIndex);
+                
+                // メモリ軽量化のため、履歴は最大100枚まで
+                if (historyList.length > 100) {
+                    historyList.shift(); // 古いものを捨てる
+                } else {
+                    historyPos++;
+                }
+            }
+            
             loadImage(); 
             resetTimer(); 
             playSound(); 
+            
+            // もし履歴パネルが開いていたら中身を更新
+            if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
         }
 
         function prevImage() { 
-            if(historyStack.length > 0) { 
-                if(hmActive) exitHardMode(); 
-                currentIndex = historyStack.pop(); 
+            if (historyPos > 0) { 
+                if (hmActive) exitHardMode(); 
+                historyPos--; // ポインタを1つ戻す
+                currentIndex = historyList[historyPos]; 
                 loadImage(); 
                 resetTimer(); 
+                
+                if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
             } 
         }
+
+        // --- 履歴パネル（答え合わせ）機能 ---
+        function toggleHistoryPanel() {
+            const panel = document.getElementById('history-panel');
+            const isOpen = panel.classList.contains('open');
+            if (isOpen) {
+                panel.classList.remove('open');
+                clearHistoryThumbs(); // 閉じた瞬間にメモリ完全解放
+            } else {
+                panel.classList.add('open');
+                renderHistoryThumbs(); // 開いた時だけ生成
+            }
+        }
+
+        function clearHistoryThumbs() {
+            const content = document.getElementById('history-content');
+            content.innerHTML = '';
+            // 重くならないようURLオブジェクトを全て破棄
+            historyUrls.forEach(url => URL.revokeObjectURL(url));
+            historyUrls = [];
+        }
+
+        function renderHistoryThumbs() {
+            const content = document.getElementById('history-content');
+            clearHistoryThumbs();
+            
+            // 直近30件のみ表示（最新が上に来るようにループ）
+            const start = Math.max(0, historyList.length - 30);
+            for (let i = historyList.length - 1; i >= start; i--) {
+                const imgIndex = historyList[i];
+                const file = images[imgIndex];
+                if(!file) continue;
+                
+                const url = URL.createObjectURL(file);
+                historyUrls.push(url);
+                
+                const imgEl = document.createElement('img');
+                imgEl.src = url;
+                // 今見ている画像に色枠をつける
+                imgEl.className = 'history-thumb' + (i === historyPos ? ' current' : '');
+                
+                // クリックでその履歴に飛ぶ
+                imgEl.onclick = () => {
+                    jumpToHistory(i);
+                    // スマホ幅の時は画面が埋まるので自動で閉じる
+                    if(window.innerWidth <= 440) toggleHistoryPanel();
+                };
+                content.appendChild(imgEl);
+            }
+        }
+
+        function jumpToHistory(index) {
+            historyPos = index;
+            currentIndex = historyList[historyPos];
+            if (hmActive) exitHardMode();
+            loadImage();
+            resetTimer();
+            stopTimer(); // 答え合わせ目的で飛んだ時は、落ち着いて見れるようタイマーを自動一時停止する
+            renderHistoryThumbs(); // 枠の表示を更新
+        }
+        // -----------------------------
 
         function toggleTimer() { 
             if(images.length > 0) isRunning ? stopTimer() : startTimer(); 
@@ -406,7 +530,6 @@
             } 
         }
 
-        // --- キーボードショートカット ---
         document.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'SELECT' || document.activeElement.tagName === 'INPUT') return;
             if (e.code === 'Space') { e.preventDefault(); toggleTimer(); } 
@@ -414,42 +537,34 @@
             else if (e.code === 'ArrowLeft') { prevImage(); }
         });
 
-        // --- ジェスチャー操作（スワイプ＆ダブルタップ） ---
+        // ジェスチャー操作
         let pointerStartX = 0;
         let lastTapTime = 0;
         const imgContainer = document.getElementById('image-container');
 
-        // タッチやマウス、ペンが画面に触れた時の座標を記録
         imgContainer.addEventListener('pointerdown', (e) => {
             pointerStartX = e.clientX;
         });
 
-        // 離した時の座標を計算して動作を決定
         imgContainer.addEventListener('pointerup', (e) => {
             const pointerEndX = e.clientX;
             const diffX = pointerStartX - pointerEndX;
-            const threshold = 50; // 50px以上動かした場合のみスワイプと判定（誤操作防止）
+            const threshold = 50;
 
             if (Math.abs(diffX) > threshold) {
-                // スワイプ処理
-                if (diffX > 0) {
-                    nextImage(); // 左にスワイプ ➔ 次へ
-                } else {
-                    prevImage(); // 右にスワイプ ➔ 前へ
-                }
-                lastTapTime = 0; // スワイプした時はダブルタップ判定をリセット
+                if (diffX > 0) { nextImage(); } 
+                else { prevImage(); }
+                lastTapTime = 0; 
             } else {
-                // タップ（クリック）処理
                 const currentTime = new Date().getTime();
                 const tapLength = currentTime - lastTapTime;
                 
-                // 300ミリ秒以内に2回連続でタップされた場合（ダブルタップ）
                 if (tapLength < 300 && tapLength > 0) {
-                    toggleTimer(); // 再生 / 一時停止
-                    lastTapTime = 0; // 判定リセット
+                    toggleTimer();
+                    lastTapTime = 0;
                     e.preventDefault();
                 } else {
-                    lastTapTime = currentTime; // 1回目のタップ時間を記録
+                    lastTapTime = currentTime;
                 }
             }
         });
