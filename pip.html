@@ -2,11 +2,16 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1e1e1e">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Croquis Timer">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="display" content="standalone">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>最強Croquis App (完全版)</title>
+    <link rel="manifest" href="manifest.json">
+    
+    <title>Croquis Timer</title>
     
     <style>
         :root { 
@@ -240,6 +245,13 @@
             await initDB();
             dbFavImages = await getAllFavsFromDB();
             initMediaSession();
+            
+            // Service Workerの登録 (PWAキャッシュ用)
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(() => {
+                    // SWが存在しない環境（ローカル単一ファイル起動時など）では無視する
+                });
+            }
         };
 
         function toggleBottomPanel() { document.getElementById('bottom-panel').classList.toggle('hidden'); }
@@ -601,7 +613,6 @@
             ctx.restore();
 
             if (drawOverlay) {
-                // 中央の邪魔なUIを廃止。最下部に細いプログレスバーを配置
                 const barHeight = Math.max(4, canvas.height * 0.015);
                 const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
                 const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
@@ -610,7 +621,6 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
                 ctx.fillStyle = '#00d4ff'; ctx.fillRect(0, canvas.height - barHeight, progWidth, barHeight);
 
-                // 時間は右下に極小テキストで、ドロップシャドウをつけて視認性を確保
                 const fontSize = Math.max(16, canvas.height * 0.04);
                 ctx.font = "bold " + fontSize + "px sans-serif"; ctx.textBaseline = 'bottom'; ctx.textAlign = 'right';
                 let sec = Math.ceil(remainMs / 1000); let m = Math.floor(sec / 60); let s = sec % 60; 
@@ -619,14 +629,13 @@
                 ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
                 ctx.fillStyle = '#00d4ff'; 
                 ctx.fillText(timeText, canvas.width - 10, canvas.height - barHeight - 5);
-                ctx.shadowColor = "transparent"; // リセット
+                ctx.shadowColor = "transparent"; 
             }
         }
 
         function updatePiP() {
             if (!isPiP || !ui.img.complete || ui.img.naturalWidth === 0) return;
             
-            // OS標準のアスペクト比固定スケーリングを効かせるため、キャンバスサイズを画像本来の比率と完全一致させる
             const ratio = ui.img.naturalWidth / ui.img.naturalHeight;
             const baseWidth = Math.max(ui.img.naturalWidth, 800);
             pipCanvas.width = baseWidth;
