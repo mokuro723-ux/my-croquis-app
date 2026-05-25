@@ -193,7 +193,6 @@
 
         let skipList = JSON.parse(localStorage.getItem('croquis_skips') || '[]');
         let pipVideo, pipCanvas, pipCtx, isPiP = false, pipInitialized = false;
-        let docPipWindow = null; 
         let db; const dbName = "CroquisAppDB", storeName = "favorites";
 
         const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
@@ -565,71 +564,6 @@
         async function togglePiP() {
             if (images.length === 0) { alert("画像を読み込んでください"); return; }
             
-            if ('documentPictureInPicture' in window) {
-                if (docPipWindow) { docPipWindow.close(); return; } 
-                try {
-                    const aspect = ui.img.naturalHeight / ui.img.naturalWidth;
-                    docPipWindow = await window.documentPictureInPicture.requestWindow({
-                        width: 400, height: Math.round(400 * aspect) || 300
-                    });
-                    
-                    const pipDoc = docPipWindow.document;
-                    const style = pipDoc.createElement('style');
-                    style.textContent = `
-                        body { margin: 0; background: var(--bg-color, #1e1e1e); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; position: relative; }
-                        #pip-canvas { width: 100%; height: 100%; object-fit: contain; }
-                        #pip-prog-bg { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(0,0,0,0.3); z-index: 30; transition: transform 0.2s ease; }
-                        #pip-prog { width: 100%; height: 100%; background: #00d4ff; }
-                        #pip-controls { 
-                            position: absolute; bottom: 0; left: 0; width: 100%;
-                            background: rgba(17, 17, 17, 0.92); display: flex; justify-content: space-between; align-items: center; 
-                            padding: 6px 12px; box-sizing: border-box; opacity: 0; transform: translateY(100%); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; z-index: 20;
-                            border-top: 1px solid #333;
-                        }
-                        body:hover #pip-controls, body:active #pip-controls { opacity: 1; transform: translateY(0); pointer-events: auto; }
-                        body:hover #pip-prog-bg { transform: translateY(-38px); }
-                        .btn-group { display: flex; gap: 4px; }
-                        button { background: #2a2a2a; color: #ddd; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 32px; }
-                        button:hover { background: #444; }
-                        button.accent { background: #00d4ff; color: #000; }
-                        .svg-icon { width: 14px; height: 14px; fill: currentColor; pointer-events: none; }
-                        #pip-time { color: #00d4ff; font-weight: bold; font-family: sans-serif; font-size: 13px; min-width: 42px; text-align: right; letter-spacing: 0.5px; }
-                    `;
-                    pipDoc.head.appendChild(style);
-                    
-                    const canvas = pipDoc.createElement('canvas'); canvas.id = 'pip-canvas';
-                    const progBg = pipDoc.createElement('div'); progBg.id = 'pip-prog-bg';
-                    const prog = pipDoc.createElement('div'); prog.id = 'pip-prog'; progBg.appendChild(prog);
-                    
-                    const controls = pipDoc.createElement('div'); controls.id = 'pip-controls';
-                    const btnGroup = pipDoc.createElement('div'); btnGroup.className = 'btn-group';
-                    
-                    const prevBtn = pipDoc.createElement('button'); prevBtn.innerHTML = '<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>';
-                    prevBtn.onclick = function() { prevImage(); };
-                    
-                    const playBtn = pipDoc.createElement('button'); playBtn.id = 'pip-play'; playBtn.className = isRunning ? '' : 'accent';
-                    playBtn.innerHTML = isRunning ? iconPauseSVG : iconPlaySVG;
-                    playBtn.onclick = function() { toggleTimer(); };
-                    
-                    const nextBtn = pipDoc.createElement('button'); nextBtn.innerHTML = '<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>';
-                    nextBtn.onclick = function() { nextImage(); };
-                    
-                    const timeLabel = pipDoc.createElement('div'); timeLabel.id = 'pip-time'; timeLabel.innerText = ui.timer.innerText;
-                    
-                    btnGroup.append(prevBtn, playBtn, nextBtn);
-                    controls.append(btnGroup, timeLabel);
-                    pipDoc.body.append(canvas, progBg, controls);
-                    
-                    docPipWindow.addEventListener('pagehide', function() {
-                        docPipWindow = null; isPiP = false; ui.pipBtn.classList.remove('pip-active');
-                    });
-                    
-                    isPiP = true; ui.pipBtn.classList.add('pip-active');
-                    docPipWindow.lastImageSrc = "";
-                    updatePiP(); return;
-                } catch(e) { console.warn("Doc PiP失敗、従来型へフォールバックします", e); }
-            }
-
             if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境はPiP機能に対応していません。"); return; }
             if (document.pictureInPictureElement) { await document.exitPictureInPicture().catch(function(){}); } 
             else {
@@ -667,60 +601,37 @@
             ctx.restore();
 
             if (drawOverlay) {
-                const barHeight = Math.max(10, canvas.height * 0.02);
+                // 中央の邪魔なUIを廃止。最下部に細いプログレスバーを配置
+                const barHeight = Math.max(4, canvas.height * 0.015);
                 const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
                 const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
                 const progWidth = (remainMs / totalMs) * canvas.width;
                 
-                ctx.fillStyle = '#111'; ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
                 ctx.fillStyle = '#00d4ff'; ctx.fillRect(0, canvas.height - barHeight, progWidth, barHeight);
 
-                const fontSize = Math.max(30, canvas.height * 0.05);
-                ctx.font = "bold " + fontSize + "px sans-serif"; ctx.textBaseline = 'top';
+                // 時間は右下に極小テキストで、ドロップシャドウをつけて視認性を確保
+                const fontSize = Math.max(16, canvas.height * 0.04);
+                ctx.font = "bold " + fontSize + "px sans-serif"; ctx.textBaseline = 'bottom'; ctx.textAlign = 'right';
                 let sec = Math.ceil(remainMs / 1000); let m = Math.floor(sec / 60); let s = sec % 60; 
                 const timeText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
-                const textWidth = ctx.measureText(timeText).width;
-                ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, textWidth + fontSize, fontSize * 1.5);
-                ctx.fillStyle = '#00d4ff'; ctx.fillText(timeText, fontSize/2, fontSize/4);
+                
+                ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+                ctx.fillStyle = '#00d4ff'; 
+                ctx.fillText(timeText, canvas.width - 10, canvas.height - barHeight - 5);
+                ctx.shadowColor = "transparent"; // リセット
             }
         }
 
         function updatePiP() {
             if (!isPiP || !ui.img.complete || ui.img.naturalWidth === 0) return;
             
-            if (docPipWindow) {
-                const pCanvas = docPipWindow.document.getElementById('pip-canvas');
-                if(pCanvas) {
-                    pCanvas.width = ui.img.naturalWidth; pCanvas.height = ui.img.naturalHeight;
-                    drawToCanvas(pCanvas, pCanvas.getContext('2d'), false);
-                    
-                    if (docPipWindow.lastImageSrc !== ui.img.src) {
-                        docPipWindow.lastImageSrc = ui.img.src;
-                        const baseWidth = docPipWindow.innerWidth || 400;
-                        const targetHeight = Math.round(baseWidth * (pCanvas.height / pCanvas.width)) || 300;
-                        const diffH = docPipWindow.outerHeight - docPipWindow.innerHeight;
-                        docPipWindow.resizeTo(baseWidth, targetHeight + diffH);
-                    }
-                    
-                    const timeDiv = docPipWindow.document.getElementById('pip-time');
-                    if(timeDiv) timeDiv.innerText = ui.timer.innerText;
-                    
-                    const playBtn = docPipWindow.document.getElementById('pip-play');
-                    if(playBtn) { playBtn.innerHTML = isRunning ? iconPauseSVG : iconPlaySVG; playBtn.className = isRunning ? '' : 'accent'; }
-                    
-                    const pBar = docPipWindow.document.getElementById('pip-prog');
-                    if(pBar) {
-                        const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
-                        const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
-                        pBar.style.width = ((remainMs / totalMs) * 100) + '%';
-                    }
-                }
-                return;
-            }
-
-            const minSize = 800; const ratio = ui.img.naturalWidth / ui.img.naturalHeight;
-            if (ui.img.naturalWidth < minSize) { pipCanvas.width = minSize; pipCanvas.height = minSize / ratio; } 
-            else { pipCanvas.width = ui.img.naturalWidth; pipCanvas.height = ui.img.naturalHeight; }
+            // OS標準のアスペクト比固定スケーリングを効かせるため、キャンバスサイズを画像本来の比率と完全一致させる
+            const ratio = ui.img.naturalWidth / ui.img.naturalHeight;
+            const baseWidth = Math.max(ui.img.naturalWidth, 800);
+            pipCanvas.width = baseWidth;
+            pipCanvas.height = baseWidth / ratio;
+            
             drawToCanvas(pipCanvas, pipCtx, true);
         }
 
