@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="display" content="standalone">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>最強Croquis App (修正版)</title>
+    <title>最強Croquis App (完全版)</title>
     
     <style>
         :root { 
@@ -99,7 +99,7 @@
         <div id="timer-label">00:30</div>
         <div class="top-right">
             <button class="icon-btn" id="bg-btn" onclick="cycleBg()" title="背景色"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></button>
-            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="音切替方法">
+            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="音切替">
                 <svg viewBox="0 0 24 24" class="svg-icon" id="icon-vol"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
             </button>
             <button class="icon-btn" onclick="toggleBottomPanel()" title="メニュー開閉"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
@@ -108,8 +108,8 @@
 
     <div id="history-panel">
         <div id="history-header">
-            <span>履歴</span>
-            <button id="history-filter-btn" onclick="toggleHistoryFilter()" style="background-color:#444; color:#fff; font-size:0.75rem; padding:2px 8px; min-width:auto;">全て</button>
+            <span>履歴管理</span>
+            <button id="history-filter-btn" onclick="toggleHistoryFilter()" style="background-color:#444; color:#fff; font-size:0.75rem; padding:4px 10px; min-width:auto; font-weight:bold; border-radius:4px;">全て (履歴)</button>
             <button class="icon-btn" onclick="toggleHistoryPanel()"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
         </div>
         <div id="history-content"></div>
@@ -174,7 +174,12 @@
     <audio id="sound-player" src="音声.mp3" preload="none"></audio>
 
     <script>
-        let images = [], currentIndex = 0;
+        // データ管理用プール
+        let sourceImages = []; // ユーザーが選択したフォルダの生Fileオブジェクト
+        let dbFavImages = [];  // IndexedDBからロードした永続化お気に入り画像 [{name, data}]
+        let images = [], currentIndex = 0; // 現在アクティブな再生リスト
+        let isFavMode = false; // お気に入りプールを単独再生しているか
+
         let historyList = [], historyPos = -1, historyUrls = [];
         let timerSeconds = 30, remaining = 30, isRunning = false, expectedEndTime = 0;
         let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false };
@@ -184,15 +189,12 @@
         let currentImageUrl = null, resizeTimer;
         let animationFrameId; 
 
-        // 5秒後に隠す管理用変数
-        let isEyeHideEnabled = false;
-        let eyeHideTimeout = null;
-        let showFavsOnly = false; // お気に入りフィルターフラグ
+        let isEyeHideEnabled = false, eyeHideTimeout = null;
+        let showFavsOnly = false; 
 
         let skipList = JSON.parse(localStorage.getItem('croquis_skips') || '[]');
-        let favList = JSON.parse(localStorage.getItem('croquis_favs') || '[]');
-
         let pipVideo, pipCanvas, pipCtx, isPiP = false, pipInitialized = false;
+        let db; const dbName = "CroquisAppDB", storeName = "favorites";
 
         const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
         const iconPauseSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
@@ -210,13 +212,59 @@
             eyeBtn: document.getElementById('eye-btn')
         };
 
+        // IndexedDB 初期化制御
+        function initDB() {
+            return new Promise((resolve) => {
+                let request = indexedDB.open(dbName, 1);
+                request.onupgradeneeded = function(e) { e.target.result.createObjectStore(storeName, { keyPath: "name" }); };
+                request.onsuccess = function(e) { db = e.target.result; resolve(); };
+                request.onerror = function() { resolve(); };
+            });
+        }
+        function saveFavToDB(name, dataUrl) { if (!db) return; db.transaction(storeName, "readwrite").objectStore(storeName).put({ name: name, data: dataUrl, timestamp: Date.now() }); }
+        function deleteFavFromDB(name) { if (!db) return; db.transaction(storeName, "readwrite").objectStore(storeName).delete(name); }
+        function getAllFavsFromDB() {
+            return new Promise((resolve) => {
+                if (!db) { resolve([]); return; }
+                let request = db.transaction(storeName, "readonly").objectStore(storeName).getAll();
+                request.onsuccess = function() { resolve(request.result || []); };
+                request.onerror = function() { resolve([]); };
+            });
+        }
+
+        // デバイス判定（iOSならPiPを隠す）
+        function checkDevice() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (isIOS && ui.pipBtn) ui.pipBtn.style.display = 'none';
+        }
+
+        window.onload = async function() {
+            checkDevice();
+            await initDB();
+            dbFavImages = await getAllFavsFromDB();
+            initMediaSession();
+            
+            // アプリ起動時にお気に入りデータがあれば自動で読み込み、すぐ遊べるように設定
+            if (dbFavImages.length > 0) {
+                images = dbFavImages; isFavMode = true; showFavsOnly = true;
+                document.getElementById('history-filter-btn').innerText = '★ お気に入り';
+                currentIndex = 0; loadImage();
+            }
+        };
+
         function toggleBottomPanel() { document.getElementById('bottom-panel').classList.toggle('hidden'); }
         function toggleManagePopup() { ui.managePopup.classList.toggle('show'); }
         document.addEventListener('click', function(e) { if(!e.target.closest('#manage-popup') && !e.target.closest('#manage-btn')) { ui.managePopup.classList.remove('show'); } });
 
         function handleFiles(e) {
             const files = Array.from(e.target.files).filter(function(f) { return f.type.startsWith('image/'); });
-            if(files.length > 0) { images = files; if(settings.shuffle) shuffleArray(images); currentIndex = 0; historyList = []; historyPos = -1; nextImage(); }
+            if(files.length > 0) { 
+                sourceImages = files; 
+                if(settings.shuffle) shuffleArray(sourceImages); 
+                images = sourceImages; isFavMode = false; showFavsOnly = false;
+                document.getElementById('history-filter-btn').innerText = '全て (履歴)';
+                currentIndex = 0; historyList = []; historyPos = -1; nextImage(); 
+            }
             e.target.value = ''; 
         }
         document.getElementById('folder-input').addEventListener('change', handleFiles);
@@ -225,32 +273,33 @@
         function shuffleArray(arr) { for(let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const temp = arr[i]; arr[i] = arr[j]; arr[j] = temp; } }
 
         function loadImage() {
-            if(images.length === 0) return;
-            const file = images[currentIndex];
-            if(skipList.includes(file.name)) {
-                setTimeout(function(){ nextImage(true); }, 10);
-                return;
-            }
+            if(images.length === 0) { ui.img.style.display = 'none'; ui.favIcon.style.display = 'none'; return; }
+            const item = images[currentIndex];
+            if(!item) return;
+
+            // スキップ判定（通常モードのみ有効）
+            if(!isFavMode && skipList.includes(item.name)) { setTimeout(function(){ nextImage(true); }, 10); return; }
 
             isImageHidden = false;
-            ui.favIcon.style.display = favList.includes(file.name) ? 'block' : 'none';
+            const isFav = isFavMode ? true : dbFavImages.some(function(f){ return f.name === item.name; });
+            ui.favIcon.style.display = isFav ? 'block' : 'none';
 
-            if (currentImageUrl) { URL.revokeObjectURL(currentImageUrl); } 
-            currentImageUrl = URL.createObjectURL(file);
-            ui.img.src = currentImageUrl;
+            if (currentImageUrl && !currentImageUrl.startsWith('data:')) { URL.revokeObjectURL(currentImageUrl); } 
+            
+            // データ種別（生File or 永続Base64データ）を自動判定してマッピング
+            if (item.data) { currentImageUrl = item.data; ui.img.src = currentImageUrl; } 
+            else { currentImageUrl = URL.createObjectURL(item); ui.img.src = currentImageUrl; }
+            
             ui.img.style.display = 'block';
             ui.img.onload = function() {
                 applyFilters();
-                // 👁️目のボタン連動処理
                 clearTimeout(eyeHideTimeout);
                 if (isEyeHideEnabled && !hmActive) {
-                    eyeHideTimeout = setTimeout(function() {
-                        isImageHidden = true;
-                        applyFilters();
-                    }, 5000);
+                    eyeHideTimeout = setTimeout(function() { isImageHidden = true; applyFilters(); }, 5000);
                 }
             };
             ui.img.onerror = function() { nextImage(); };
+            updateMediaSession();
         }
 
         function applyFilters() {
@@ -262,11 +311,8 @@
             ui.img.style.opacity = isImageHidden ? '0' : '1';
             
             if(settings.grid && !isImageHidden && ui.img.complete) {
-                ui.grid.style.display = 'block';
-                ui.grid.style.width = ui.img.offsetWidth + 'px';
-                ui.grid.style.height = ui.img.offsetHeight + 'px';
-                ui.grid.style.left = ui.img.offsetLeft + 'px';
-                ui.grid.style.top = ui.img.offsetTop + 'px';
+                ui.grid.style.display = 'block'; ui.grid.style.width = ui.img.offsetWidth + 'px';
+                ui.grid.style.height = ui.img.offsetHeight + 'px'; ui.grid.style.left = ui.img.offsetLeft + 'px'; ui.grid.style.top = ui.img.offsetTop + 'px';
             } else { ui.grid.style.display = 'none'; }
             
             if (isPiP) updatePiP();
@@ -278,40 +324,76 @@
             settings[key] = !settings[key]; 
             const btn = document.getElementById(key + '-btn');
             if(btn) { if(settings[key]) { btn.classList.add("active"); } else { btn.classList.remove("active"); } }
+            if(key === 'shuffle' && !isFavMode && sourceImages.length > 0) { shuffleArray(sourceImages); images = sourceImages; }
             applyFilters(); 
         }
 
-        // 👁️目のボタン処理のトグル
         function toggleEyeHide() {
             isEyeHideEnabled = !isEyeHideEnabled;
             if(isEyeHideEnabled) { ui.eyeBtn.classList.add("active"); } else { ui.eyeBtn.classList.remove("active"); clearTimeout(eyeHideTimeout); isImageHidden = false; applyFilters(); }
             loadImage();
         }
 
+        // お気に入り登録のIndexedDB完全永続化制御
         function toggleFavCurrent() {
             if(images.length === 0) return;
-            const fname = images[currentIndex].name;
-            if(favList.includes(fname)) { favList = favList.filter(function(n){ return n !== fname; }); } 
-            else { favList.push(fname); }
-            localStorage.setItem('croquis_favs', JSON.stringify(favList));
-            ui.favIcon.style.display = favList.includes(fname) ? 'block' : 'none';
-            ui.managePopup.classList.remove('show');
-            if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
+            const item = images[currentIndex];
+            const fname = item.name;
+            
+            if (isFavMode) {
+                // お気に入り単独再生モード中の解除
+                dbFavImages = dbFavImages.filter(function(f){ return f.name !== fname; });
+                deleteFavFromDB(fname);
+                ui.managePopup.classList.remove('show');
+                if (dbFavImages.length === 0) {
+                    alert("お気に入りが空になりました。通常モードに戻ります。");
+                    isFavMode = false; showFavsOnly = false; images = sourceImages;
+                    document.getElementById('history-filter-btn').innerText = '全て (履歴)';
+                    currentIndex = 0; historyList = []; historyPos = -1; loadImage();
+                } else {
+                    currentIndex = currentIndex % dbFavImages.length; loadImage();
+                }
+                renderHistoryThumbs();
+            } else {
+                // 通常モード再生中のトグル
+                const foundIdx = dbFavImages.findIndex(function(f){ return f.name === fname; });
+                if(foundIdx > -1) {
+                    dbFavImages.splice(foundIdx, 1); deleteFavFromDB(fname); ui.favIcon.style.display = 'none';
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const dataUrl = e.target.result;
+                        dbFavImages.push({ name: fname, data: dataUrl });
+                        saveFavToDB(fname, dataUrl);
+                        ui.favIcon.style.display = 'block';
+                        if(document.getElementById('history-panel').classList.contains('open') && showFavsOnly) renderHistoryThumbs();
+                    };
+                    reader.readAsDataURL(item);
+                }
+                ui.managePopup.classList.remove('show');
+            }
         }
+
         function skipCurrent() {
-            if(images.length === 0) return;
+            if(images.length === 0 || isFavMode) return;
             const fname = images[currentIndex].name;
             if(!skipList.includes(fname)) { skipList.push(fname); localStorage.setItem('croquis_skips', JSON.stringify(skipList)); }
             ui.managePopup.classList.remove('show');
             nextImage();
         }
+
         function clearManageData() {
-            skipList = []; favList = [];
-            localStorage.removeItem('croquis_skips'); localStorage.removeItem('croquis_favs');
-            ui.favIcon.style.display = 'none';
-            ui.managePopup.classList.remove('show');
+            if(!confirm("お気に入り画像データ、スキップ設定をすべて削除して初期化しますか？")) return;
+            skipList = []; dbFavImages = []; localStorage.removeItem('croquis_skips');
+            if(db) db.transaction(storeName, "readwrite").objectStore(storeName).clear();
+            
+            ui.favIcon.style.display = 'none'; ui.managePopup.classList.remove('show');
+            isFavMode = false; showFavsOnly = false;
+            document.getElementById('history-filter-btn').innerText = '全て (履歴)';
+            images = sourceImages; currentIndex = 0; historyList = []; historyPos = -1;
+            loadImage();
             if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
-            alert("お気に入り・スキップ設定をリセットしました。");
+            alert("データを完全にリセットしました。");
         }
 
         function nextImage(isSkipping = false) { 
@@ -330,18 +412,12 @@
             }
             
             loadImage(); 
-            
-            // 自動再始動の整合性を調整
             remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
             if (isRunning) {
-                expectedEndTime = Date.now() + (remaining * 1000);
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = requestAnimationFrame(updateSmoothTimer);
+                expectedEndTime = Date.now() + (remaining * 1000); cancelAnimationFrame(animationFrameId); animationFrameId = requestAnimationFrame(updateSmoothTimer);
             } else {
-                updateTimerText(remaining);
-                ui.prog.style.width = '100%';
+                updateTimerText(remaining); ui.prog.style.width = '100%';
             }
-
             if(!isSkipping) { playSound(); }
             if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
         }
@@ -356,9 +432,16 @@
             else { panel.classList.add('open'); renderHistoryThumbs(); }
         }
 
+        // 全て（履歴表示）と★（お気に入り一覧表示）の切り替え
         function toggleHistoryFilter() {
             showFavsOnly = !showFavsOnly;
-            document.getElementById('history-filter-btn').innerText = showFavsOnly ? '★のみ' : '全て';
+            if (!showFavsOnly) {
+                // 「全て」に戻した時、通常データがあれば通常モードに完全復帰
+                if (sourceImages.length > 0 && isFavMode) {
+                    isFavMode = false; images = sourceImages; currentIndex = 0; historyList = []; historyPos = -1; loadImage(); resetTimer();
+                }
+            }
+            document.getElementById('history-filter-btn').innerText = showFavsOnly ? '★ お気に入り' : '全て (履歴)';
             renderHistoryThumbs();
         }
 
@@ -367,62 +450,66 @@
         function renderHistoryThumbs() {
             const content = document.getElementById('history-content');
             clearHistoryThumbs();
-            const start = Math.max(0, historyList.length - 30);
-            let matchCount = 0;
-
-            for (let i = historyList.length - 1; i >= start; i--) {
-                const imgIndex = historyList[i]; const file = images[imgIndex]; if(!file) continue;
-                
-                // お気に入りフィルター条件の適用
-                if (showFavsOnly && !favList.includes(file.name)) continue;
-                matchCount++;
-
-                const url = URL.createObjectURL(file); historyUrls.push(url);
-                
-                const thumbDiv = document.createElement('div');
-                thumbDiv.style.position = 'relative';
-                
-                const imgEl = document.createElement('img'); imgEl.src = url; imgEl.className = 'history-thumb' + (i === historyPos ? ' current' : '');
-                imgEl.onclick = (function(idx) { return function() { jumpToHistory(idx); if(window.innerWidth <= 440) toggleHistoryPanel(); }; })(i);
-                
-                thumbDiv.appendChild(imgEl);
-                if(favList.includes(file.name)) {
-                    const badge = document.createElement('div'); badge.className = 'fav-badge'; badge.innerText = '★';
-                    thumbDiv.appendChild(badge);
+            
+            if (showFavsOnly) {
+                // 永続データベース内のお気に入りを一覧描画（フォルダが開かれていなくても独立動作）
+                if (dbFavImages.length === 0) {
+                    content.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#666; font-size:0.8rem; padding:20px 0;">★画像がありません</div>'; return;
                 }
-                content.appendChild(thumbDiv);
-            }
-
-            if(showFavsOnly && matchCount === 0) {
-                content.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#666; font-size:0.8rem; padding:20px 0;">★画像がありません</div>';
+                dbFavImages.forEach(function(item, idx) {
+                    const thumbDiv = document.createElement('div'); thumbDiv.style.position = 'relative';
+                    const imgEl = document.createElement('img'); imgEl.src = item.data; imgEl.className = 'history-thumb' + (isFavMode && currentIndex === idx ? ' current' : '');
+                    imgEl.onclick = function() {
+                        isFavMode = true; images = dbFavImages; currentIndex = idx;
+                        historyList = [idx]; historyPos = 0;
+                        if (hmActive) exitHardMode(); loadImage(); resetTimer();
+                        if(window.innerWidth <= 440) toggleHistoryPanel();
+                        renderHistoryThumbs();
+                    };
+                    thumbDiv.appendChild(imgEl);
+                    const badge = document.createElement('div'); badge.className = 'fav-badge'; badge.innerText = '★'; thumbDiv.appendChild(badge);
+                    content.appendChild(thumbDiv);
+                });
+            } else {
+                // 通常の動的閲覧履歴を描画
+                const currentPool = isFavMode ? dbFavImages : sourceImages;
+                const start = Math.max(0, historyList.length - 30); let matchCount = 0;
+                for (let i = historyList.length - 1; i >= start; i--) {
+                    const imgIndex = historyList[i]; const item = currentPool[imgIndex]; if(!item) continue;
+                    matchCount++;
+                    const thumbDiv = document.createElement('div'); thumbDiv.style.position = 'relative';
+                    const imgEl = document.createElement('img');
+                    if (item.data) { imgEl.src = item.data; } 
+                    else { const url = URL.createObjectURL(item); historyUrls.push(url); imgEl.src = url; }
+                    imgEl.className = 'history-thumb' + (i === historyPos ? ' current' : '');
+                    imgEl.onclick = (function(idx) {
+                        return function() { historyPos = idx; currentIndex = historyList[historyPos]; if (hmActive) exitHardMode(); loadImage(); resetTimer(); if(window.innerWidth <= 440) toggleHistoryPanel(); renderHistoryThumbs(); };
+                    })(i);
+                    thumbDiv.appendChild(imgEl);
+                    const isFav = isFavMode ? true : dbFavImages.some(function(f){ return f.name === item.name; });
+                    if(isFav) { const badge = document.createElement('div'); badge.className = 'fav-badge'; badge.innerText = '★'; thumbDiv.appendChild(badge); }
+                    content.appendChild(thumbDiv);
+                }
+                if(matchCount === 0) content.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#666; font-size:0.8rem; padding:20px 0;">履歴がありません</div>';
             }
         }
 
-        function jumpToHistory(index) { historyPos = index; currentIndex = historyList[historyPos]; if (hmActive) exitHardMode(); loadImage(); resetTimer(); stopTimer(); renderHistoryThumbs(); }
-        
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
         function startTimer() { 
             isRunning = true; ui.playBtn.innerHTML = iconPauseSVG; ui.playBtn.classList.remove("accent"); 
-            expectedEndTime = Date.now() + (remaining * 1000); 
-            cancelAnimationFrame(animationFrameId);
-            updateSmoothTimer();
+            expectedEndTime = Date.now() + (remaining * 1000); cancelAnimationFrame(animationFrameId); updateSmoothTimer();
+            updateMediaSession();
         }
         function stopTimer() { 
-            isRunning = false; ui.playBtn.innerHTML = iconPlaySVG; ui.playBtn.classList.add("accent"); 
-            cancelAnimationFrame(animationFrameId);
+            isRunning = false; ui.playBtn.innerHTML = iconPlaySVG; ui.playBtn.classList.add("accent"); cancelAnimationFrame(animationFrameId);
+            updateMediaSession();
         }
         
         function updateSmoothTimer() {
             if(!isRunning) return;
-            const now = Date.now();
-            const remainMs = expectedEndTime - now;
-            remaining = Math.ceil(remainMs / 1000);
-            
+            const now = Date.now(); const remainMs = expectedEndTime - now; remaining = Math.ceil(remainMs / 1000);
             if(remainMs <= 0) { 
-                remaining = 0; 
-                updateTimerText(0); 
-                ui.prog.style.width = '0%';
-                cancelAnimationFrame(animationFrameId);
+                remaining = 0; updateTimerText(0); ui.prog.style.width = '0%'; cancelAnimationFrame(animationFrameId);
                 hmActive ? hmNextPhase() : nextImage(); 
             } else { 
                 updateTimerText(remaining);
@@ -435,18 +522,15 @@
         
         function resetTimer() { 
             remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
-            if (isRunning) {
-                expectedEndTime = Date.now() + (remaining * 1000); 
-            } else {
-                updateTimerText(remaining);
-                ui.prog.style.width = '100%';
-            }
+            if (isRunning) { expectedEndTime = Date.now() + (remaining * 1000); } 
+            else { updateTimerText(remaining); ui.prog.style.width = '100%'; }
         }
         function setTimer(sec) { exitHardMode(); timerSeconds = sec; const select = document.getElementById('time-select'); if (select) select.value = sec; resetTimer(); }
         
         function updateTimerText(sec) { 
             let m = Math.floor(sec / 60); let s = sec % 60; 
             ui.timer.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+            if(isRunning && isPiP && sec % 2 === 0) updateMediaSession(); // メディアセッション時間の定期的同期
         }
         
         function toggleMute() { isMuted = !isMuted; ui.muteBtn.innerHTML = isMuted ? iconMuteSVG : iconVolSVG; }
@@ -459,44 +543,52 @@
         function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); resetTimer(); }
         function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
 
+        // PC専用 PiP操作UIシグナル連動用制御 (MediaSession)
+        function initMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', function() { startTimer(); });
+                navigator.mediaSession.setActionHandler('pause', function() { stopTimer(); });
+                navigator.mediaSession.setActionHandler('previoustrack', function() { prevImage(); });
+                navigator.mediaSession.setActionHandler('nexttrack', function() { nextImage(); });
+            }
+        }
+        function updateMediaSession() {
+            if ('mediaSession' in navigator && images.length > 0) {
+                const item = images[currentIndex];
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: item ? item.name : 'Croquis App',
+                    artist: 'タイマー残り: ' + ui.timer.innerText,
+                    album: isFavMode ? '★ お気に入り再生中' : '通常再生中'
+                });
+                navigator.mediaSession.playbackState = isRunning ? "playing" : "paused";
+            }
+        }
+
         function initPiP() {
             if(pipInitialized) return true;
             try {
-                pipVideo = document.createElement('video');
-                pipVideo.muted = true; pipVideo.playsInline = true;
+                pipVideo = document.createElement('video'); pipVideo.muted = true; pipVideo.playsInline = true;
                 pipVideo.style.position = 'fixed'; pipVideo.style.left = '-9999px'; pipVideo.style.opacity = '0'; pipVideo.style.pointerEvents = 'none';
-                document.body.appendChild(pipVideo);
-
-                pipCanvas = document.createElement('canvas');
-                pipCtx = pipCanvas.getContext('2d');
+                document.body.appendChild(pipVideo); pipCanvas = document.createElement('canvas'); pipCtx = pipCanvas.getContext('2d');
                 
                 pipVideo.addEventListener('leavepictureinpicture', function() { isPiP = false; ui.pipBtn.classList.remove('pip-active'); });
                 pipVideo.addEventListener('enterpictureinpicture', function() { isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP(); });
-                pipVideo.addEventListener('webkitpresentationmodechanged', function() {
-                    if (pipVideo.webkitPresentationMode === 'picture-in-picture') { isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP(); } 
-                    else { isPiP = false; ui.pipBtn.classList.remove('pip-active'); }
-                });
-                pipInitialized = true;
-                return true;
-            } catch(e) { console.warn("PiP Init Error:", e); return false; }
+                pipInitialized = true; return true;
+            } catch(e) { return false; }
         }
 
         async function togglePiP() {
-            if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境（iOS等）はブラウザの仕様上、この方式のPiP機能に対応していません。"); return; }
-            const isPiPOpen = document.pictureInPictureElement || (pipVideo.webkitPresentationMode === 'picture-in-picture');
-
-            if (isPiPOpen) {
-                if (document.exitPictureInPicture) { await document.exitPictureInPicture().catch(function(e){}); } 
-                else if (pipVideo.webkitSetPresentationMode) { pipVideo.webkitSetPresentationMode('inline'); }
-            } else {
-                if (images.length === 0) { alert("まずは画像を読み込んでください"); return; }
+            if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境はブラウザの仕様上、この方式のPiP機能に対応していません。"); return; }
+            const isPiPOpen = document.pictureInPictureElement;
+            if (isPiPOpen) { await document.exitPictureInPicture().catch(function(){}); } 
+            else {
+                if (images.length === 0) { alert("画像を読み込んでください"); return; }
                 try {
                     if (!pipVideo.srcObject) { pipVideo.srcObject = pipCanvas.captureStream(30); }
-                    isPiP = true; updatePiP(); 
-                    await pipVideo.play();
-                    if (typeof pipVideo.requestPictureInPicture === 'function') { await pipVideo.requestPictureInPicture(); } 
-                    else if (typeof pipVideo.webkitSetPresentationMode === 'function') { pipVideo.webkitSetPresentationMode('picture-in-picture'); } 
-                } catch (error) { isPiP = false; alert("小窓化に失敗しました: " + error.message); }
+                    isPiP = true; updatePiP(); await pipVideo.play();
+                    await pipVideo.requestPictureInPicture();
+                    updateMediaSession();
+                } catch (error) { isPiP = false; }
             }
         }
 
@@ -523,8 +615,6 @@
                     pipCtx.beginPath();
                     pipCtx.moveTo(-pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(-pipCanvas.width/6, pipCanvas.height/2);
                     pipCtx.moveTo(pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(pipCanvas.width/6, pipCanvas.height/2);
-                    pipCtx.moveTo(-pipCanvas.width/2, -pipCanvas.height/6); pipCtx.lineTo(-pipCanvas.width/2, -pipCanvas.height/6);
-                    pipCtx.moveTo(-pipCanvas.width/2, pipCanvas.height/6); pipCtx.lineTo(-pipCanvas.width/2, pipCanvas.height/6);
                     pipCtx.stroke();
                 }
             }
@@ -542,7 +632,6 @@
             pipCtx.font = "bold " + fontSize + "px sans-serif"; pipCtx.textBaseline = 'top';
             let sec = Math.ceil(remainMs / 1000); let m = Math.floor(sec / 60); let s = sec % 60; 
             const timeText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
-            
             const textWidth = pipCtx.measureText(timeText).width;
             pipCtx.fillStyle = 'rgba(0,0,0,0.6)'; pipCtx.fillRect(0, 0, textWidth + fontSize, fontSize * 1.5);
             pipCtx.fillStyle = '#00d4ff'; pipCtx.fillText(timeText, fontSize/2, fontSize/4);
