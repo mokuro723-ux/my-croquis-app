@@ -174,11 +174,10 @@
     <audio id="sound-player" src="音声.mp3" preload="none"></audio>
 
     <script>
-        // データ管理用プール
-        let sourceImages = []; // ユーザーが選択したフォルダの生Fileオブジェクト
-        let dbFavImages = [];  // IndexedDBからロードした永続化お気に入り画像 [{name, data}]
-        let images = [], currentIndex = 0; // 現在アクティブな再生リスト
-        let isFavMode = false; // お気に入りプールを単独再生しているか
+        let sourceImages = []; 
+        let dbFavImages = [];  
+        let images = [], currentIndex = 0; 
+        let isFavMode = false; 
 
         let historyList = [], historyPos = -1, historyUrls = [];
         let timerSeconds = 30, remaining = 30, isRunning = false, expectedEndTime = 0;
@@ -194,6 +193,7 @@
 
         let skipList = JSON.parse(localStorage.getItem('croquis_skips') || '[]');
         let pipVideo, pipCanvas, pipCtx, isPiP = false, pipInitialized = false;
+        let docPipWindow = null; // Document PiP 用
         let db; const dbName = "CroquisAppDB", storeName = "favorites";
 
         const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
@@ -212,7 +212,6 @@
             eyeBtn: document.getElementById('eye-btn')
         };
 
-        // IndexedDB 初期化制御
         function initDB() {
             return new Promise((resolve) => {
                 let request = indexedDB.open(dbName, 1);
@@ -232,7 +231,6 @@
             });
         }
 
-        // デバイス判定（iOSならPiPを隠す）
         function checkDevice() {
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             if (isIOS && ui.pipBtn) ui.pipBtn.style.display = 'none';
@@ -243,13 +241,7 @@
             await initDB();
             dbFavImages = await getAllFavsFromDB();
             initMediaSession();
-            
-            // アプリ起動時にお気に入りデータがあれば自動で読み込み、すぐ遊べるように設定
-            if (dbFavImages.length > 0) {
-                images = dbFavImages; isFavMode = true; showFavsOnly = true;
-                document.getElementById('history-filter-btn').innerText = '★ お気に入り';
-                currentIndex = 0; loadImage();
-            }
+            // 自動読み込みを廃止し、起動時はユーザーのアクションを待つ
         };
 
         function toggleBottomPanel() { document.getElementById('bottom-panel').classList.toggle('hidden'); }
@@ -277,7 +269,6 @@
             const item = images[currentIndex];
             if(!item) return;
 
-            // スキップ判定（通常モードのみ有効）
             if(!isFavMode && skipList.includes(item.name)) { setTimeout(function(){ nextImage(true); }, 10); return; }
 
             isImageHidden = false;
@@ -286,7 +277,6 @@
 
             if (currentImageUrl && !currentImageUrl.startsWith('data:')) { URL.revokeObjectURL(currentImageUrl); } 
             
-            // データ種別（生File or 永続Base64データ）を自動判定してマッピング
             if (item.data) { currentImageUrl = item.data; ui.img.src = currentImageUrl; } 
             else { currentImageUrl = URL.createObjectURL(item); ui.img.src = currentImageUrl; }
             
@@ -334,14 +324,12 @@
             loadImage();
         }
 
-        // お気に入り登録のIndexedDB完全永続化制御
         function toggleFavCurrent() {
             if(images.length === 0) return;
             const item = images[currentIndex];
             const fname = item.name;
             
             if (isFavMode) {
-                // お気に入り単独再生モード中の解除
                 dbFavImages = dbFavImages.filter(function(f){ return f.name !== fname; });
                 deleteFavFromDB(fname);
                 ui.managePopup.classList.remove('show');
@@ -355,7 +343,6 @@
                 }
                 renderHistoryThumbs();
             } else {
-                // 通常モード再生中のトグル
                 const foundIdx = dbFavImages.findIndex(function(f){ return f.name === fname; });
                 if(foundIdx > -1) {
                     dbFavImages.splice(foundIdx, 1); deleteFavFromDB(fname); ui.favIcon.style.display = 'none';
@@ -432,11 +419,9 @@
             else { panel.classList.add('open'); renderHistoryThumbs(); }
         }
 
-        // 全て（履歴表示）と★（お気に入り一覧表示）の切り替え
         function toggleHistoryFilter() {
             showFavsOnly = !showFavsOnly;
             if (!showFavsOnly) {
-                // 「全て」に戻した時、通常データがあれば通常モードに完全復帰
                 if (sourceImages.length > 0 && isFavMode) {
                     isFavMode = false; images = sourceImages; currentIndex = 0; historyList = []; historyPos = -1; loadImage(); resetTimer();
                 }
@@ -452,7 +437,6 @@
             clearHistoryThumbs();
             
             if (showFavsOnly) {
-                // 永続データベース内のお気に入りを一覧描画（フォルダが開かれていなくても独立動作）
                 if (dbFavImages.length === 0) {
                     content.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#666; font-size:0.8rem; padding:20px 0;">★画像がありません</div>'; return;
                 }
@@ -471,7 +455,6 @@
                     content.appendChild(thumbDiv);
                 });
             } else {
-                // 通常の動的閲覧履歴を描画
                 const currentPool = isFavMode ? dbFavImages : sourceImages;
                 const start = Math.max(0, historyList.length - 30); let matchCount = 0;
                 for (let i = historyList.length - 1; i >= start; i--) {
@@ -499,10 +482,12 @@
             isRunning = true; ui.playBtn.innerHTML = iconPauseSVG; ui.playBtn.classList.remove("accent"); 
             expectedEndTime = Date.now() + (remaining * 1000); cancelAnimationFrame(animationFrameId); updateSmoothTimer();
             updateMediaSession();
+            if(isPiP && pipVideo && pipVideo.paused) pipVideo.play().catch(function(){}); // レガシーPiPの再生同期
         }
         function stopTimer() { 
             isRunning = false; ui.playBtn.innerHTML = iconPlaySVG; ui.playBtn.classList.add("accent"); cancelAnimationFrame(animationFrameId);
             updateMediaSession();
+            if(isPiP && pipVideo && !pipVideo.paused) pipVideo.pause(); // レガシーPiPの停止同期
         }
         
         function updateSmoothTimer() {
@@ -530,7 +515,7 @@
         function updateTimerText(sec) { 
             let m = Math.floor(sec / 60); let s = sec % 60; 
             ui.timer.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
-            if(isRunning && isPiP && sec % 2 === 0) updateMediaSession(); // メディアセッション時間の定期的同期
+            if(isRunning && isPiP && sec % 2 === 0) updateMediaSession();
         }
         
         function toggleMute() { isMuted = !isMuted; ui.muteBtn.innerHTML = isMuted ? iconMuteSVG : iconVolSVG; }
@@ -543,7 +528,6 @@
         function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); resetTimer(); }
         function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
 
-        // PC専用 PiP操作UIシグナル連動用制御 (MediaSession)
         function initMediaSession() {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.setActionHandler('play', function() { startTimer(); });
@@ -557,8 +541,8 @@
                 const item = images[currentIndex];
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: item ? item.name : 'Croquis App',
-                    artist: 'タイマー残り: ' + ui.timer.innerText,
-                    album: isFavMode ? '★ お気に入り再生中' : '通常再生中'
+                    artist: '残り: ' + ui.timer.innerText,
+                    album: isFavMode ? '★ お気に入り' : '通常再生'
                 });
                 navigator.mediaSession.playbackState = isRunning ? "playing" : "paused";
             }
@@ -571,6 +555,9 @@
                 pipVideo.style.position = 'fixed'; pipVideo.style.left = '-9999px'; pipVideo.style.opacity = '0'; pipVideo.style.pointerEvents = 'none';
                 document.body.appendChild(pipVideo); pipCanvas = document.createElement('canvas'); pipCtx = pipCanvas.getContext('2d');
                 
+                // レガシーPiPのネイティブ再生/一時停止イベントをアプリ側タイマーと完全に同期
+                pipVideo.addEventListener('play', function() { if (!isRunning) startTimer(); });
+                pipVideo.addEventListener('pause', function() { if (isRunning) stopTimer(); });
                 pipVideo.addEventListener('leavepictureinpicture', function() { isPiP = false; ui.pipBtn.classList.remove('pip-active'); });
                 pipVideo.addEventListener('enterpictureinpicture', function() { isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP(); });
                 pipInitialized = true; return true;
@@ -578,63 +565,149 @@
         }
 
         async function togglePiP() {
-            if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境はブラウザの仕様上、この方式のPiP機能に対応していません。"); return; }
-            const isPiPOpen = document.pictureInPictureElement;
-            if (isPiPOpen) { await document.exitPictureInPicture().catch(function(){}); } 
+            if (images.length === 0) { alert("画像を読み込んでください"); return; }
+            
+            // 最新の Document Picture-in-Picture API (PC Chrome/Edge等のHTML直接描画PiP)
+            if ('documentPictureInPicture' in window) {
+                if (docPipWindow) { docPipWindow.close(); return; } // 開いていれば閉じる
+                try {
+                    docPipWindow = await window.documentPictureInPicture.requestWindow({
+                        width: 400, height: Math.round(400 * (ui.img.naturalHeight / ui.img.naturalWidth)) || 300
+                    });
+                    
+                    const pipDoc = docPipWindow.document;
+                    const style = pipDoc.createElement('style');
+                    style.textContent = `
+                        body { margin: 0; background: var(--bg-color, #1e1e1e); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+                        #pip-canvas { flex: 1; object-fit: contain; width: 100%; height: calc(100% - 50px); }
+                        #pip-prog-bg { width: 100%; height: 4px; background: #222; }
+                        #pip-prog { width: 100%; height: 100%; background: #00d4ff; }
+                        #pip-controls { height: 46px; background: #111; display: flex; justify-content: center; align-items: center; gap: 8px; }
+                        button { background: #333; color: #ddd; border: none; border-radius: 4px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+                        button:hover { background: #444; }
+                        button.accent { background: #00d4ff; color: #000; }
+                        button.accent:hover { background: #00b0d4; }
+                        .svg-icon { width: 20px; height: 20px; fill: currentColor; pointer-events: none; }
+                        #pip-time { color: #00d4ff; font-weight: bold; font-family: sans-serif; font-size: 16px; margin-left: 10px; min-width: 45px; text-align: center; }
+                    `;
+                    pipDoc.head.appendChild(style);
+                    
+                    const canvas = pipDoc.createElement('canvas'); canvas.id = 'pip-canvas';
+                    const progBg = pipDoc.createElement('div'); progBg.id = 'pip-prog-bg';
+                    const prog = pipDoc.createElement('div'); prog.id = 'pip-prog'; progBg.appendChild(prog);
+                    
+                    const controls = pipDoc.createElement('div'); controls.id = 'pip-controls';
+                    const prevBtn = pipDoc.createElement('button'); prevBtn.innerHTML = '<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>';
+                    prevBtn.onclick = function() { prevImage(); updatePiP(); };
+                    
+                    const playBtn = pipDoc.createElement('button'); playBtn.id = 'pip-play'; playBtn.className = isRunning ? '' : 'accent';
+                    playBtn.innerHTML = isRunning ? iconPauseSVG : iconPlaySVG;
+                    playBtn.onclick = function() { toggleTimer(); playBtn.innerHTML = isRunning ? iconPauseSVG : iconPlaySVG; playBtn.className = isRunning ? '' : 'accent'; };
+                    
+                    const nextBtn = pipDoc.createElement('button'); nextBtn.innerHTML = '<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>';
+                    nextBtn.onclick = function() { nextImage(); updatePiP(); };
+                    
+                    const timeLabel = pipDoc.createElement('div'); timeLabel.id = 'pip-time'; timeLabel.innerText = ui.timer.innerText;
+                    
+                    controls.append(prevBtn, playBtn, nextBtn, timeLabel);
+                    pipDoc.body.append(canvas, progBg, controls);
+                    
+                    docPipWindow.addEventListener('pagehide', function() {
+                        docPipWindow = null; isPiP = false; ui.pipBtn.classList.remove('pip-active');
+                    });
+                    
+                    isPiP = true; ui.pipBtn.classList.add('pip-active');
+                    updatePiP(); return;
+                } catch(e) { console.warn("Doc PiP失敗、従来型へフォールバックします", e); }
+            }
+
+            // フォールバック: 従来の <video> ベースの PiP
+            if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境はPiP機能に対応していません。"); return; }
+            if (document.pictureInPictureElement) { await document.exitPictureInPicture().catch(function(){}); } 
             else {
-                if (images.length === 0) { alert("画像を読み込んでください"); return; }
                 try {
                     if (!pipVideo.srcObject) { pipVideo.srcObject = pipCanvas.captureStream(30); }
-                    isPiP = true; updatePiP(); await pipVideo.play();
+                    isPiP = true; updatePiP(); 
+                    if(isRunning) { await pipVideo.play(); } else { pipVideo.pause(); }
                     await pipVideo.requestPictureInPicture();
                     updateMediaSession();
                 } catch (error) { isPiP = false; }
             }
         }
 
+        // キャンバスへの描画ロジック共通化
+        function drawToCanvas(canvas, ctx, drawOverlay) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = bgMode === 0 ? '#1e1e1e' : (bgMode === 1 ? '#000' : '#fff');
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            if(!isImageHidden) {
+                ctx.translate(canvas.width/2, canvas.height/2);
+                if(settings.flipH) ctx.scale(-1, 1);
+                if(settings.flipV) ctx.scale(1, -1);
+                if(settings.mono) ctx.filter = 'grayscale(100%)';
+                ctx.drawImage(ui.img, -canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+                
+                if(settings.grid) {
+                    ctx.filter = 'none'; ctx.strokeStyle = 'rgba(128,128,128,0.4)'; ctx.lineWidth = Math.max(2, canvas.width / 200);
+                    ctx.beginPath();
+                    ctx.moveTo(-canvas.width/6, -canvas.height/2); ctx.lineTo(-canvas.width/6, canvas.height/2);
+                    ctx.moveTo(canvas.width/6, -canvas.height/2); ctx.lineTo(canvas.width/6, canvas.height/2);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+
+            // レガシーPiP用オーバーレイ描画
+            if (drawOverlay) {
+                const barHeight = Math.max(10, canvas.height * 0.02);
+                const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
+                const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
+                const progWidth = (remainMs / totalMs) * canvas.width;
+                
+                ctx.fillStyle = '#111'; ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+                ctx.fillStyle = '#00d4ff'; ctx.fillRect(0, canvas.height - barHeight, progWidth, barHeight);
+
+                const fontSize = Math.max(30, canvas.height * 0.05);
+                ctx.font = "bold " + fontSize + "px sans-serif"; ctx.textBaseline = 'top';
+                let sec = Math.ceil(remainMs / 1000); let m = Math.floor(sec / 60); let s = sec % 60; 
+                const timeText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+                const textWidth = ctx.measureText(timeText).width;
+                ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, textWidth + fontSize, fontSize * 1.5);
+                ctx.fillStyle = '#00d4ff'; ctx.fillText(timeText, fontSize/2, fontSize/4);
+            }
+        }
+
         function updatePiP() {
             if (!isPiP || !ui.img.complete || ui.img.naturalWidth === 0) return;
+            
+            if (docPipWindow) {
+                const pCanvas = docPipWindow.document.getElementById('pip-canvas');
+                if(pCanvas) {
+                    pCanvas.width = ui.img.naturalWidth || 800; pCanvas.height = ui.img.naturalHeight || 600;
+                    drawToCanvas(pCanvas, pCanvas.getContext('2d'), false);
+                    
+                    const timeDiv = docPipWindow.document.getElementById('pip-time');
+                    if(timeDiv) timeDiv.innerText = ui.timer.innerText;
+                    
+                    const playBtn = docPipWindow.document.getElementById('pip-play');
+                    if(playBtn) { playBtn.innerHTML = isRunning ? iconPauseSVG : iconPlaySVG; playBtn.className = isRunning ? '' : 'accent'; }
+                    
+                    const pBar = docPipWindow.document.getElementById('pip-prog');
+                    if(pBar) {
+                        const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
+                        const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
+                        pBar.style.width = ((remainMs / totalMs) * 100) + '%';
+                    }
+                }
+                return;
+            }
+
             const minSize = 800; const ratio = ui.img.naturalWidth / ui.img.naturalHeight;
             if (ui.img.naturalWidth < minSize) { pipCanvas.width = minSize; pipCanvas.height = minSize / ratio; } 
             else { pipCanvas.width = ui.img.naturalWidth; pipCanvas.height = ui.img.naturalHeight; }
-            
-            pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
-            pipCtx.fillStyle = bgMode === 0 ? '#1e1e1e' : (bgMode === 1 ? '#000' : '#fff');
-            pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
-            
-            pipCtx.save();
-            if(!isImageHidden) {
-                pipCtx.translate(pipCanvas.width/2, pipCanvas.height/2);
-                if(settings.flipH) pipCtx.scale(-1, 1);
-                if(settings.flipV) pipCtx.scale(1, -1);
-                if(settings.mono) pipCtx.filter = 'grayscale(100%)';
-                pipCtx.drawImage(ui.img, -pipCanvas.width/2, -pipCanvas.height/2, pipCanvas.width, pipCanvas.height);
-                
-                if(settings.grid) {
-                    pipCtx.filter = 'none'; pipCtx.strokeStyle = 'rgba(128,128,128,0.4)'; pipCtx.lineWidth = Math.max(2, pipCanvas.width / 200);
-                    pipCtx.beginPath();
-                    pipCtx.moveTo(-pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(-pipCanvas.width/6, pipCanvas.height/2);
-                    pipCtx.moveTo(pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(pipCanvas.width/6, pipCanvas.height/2);
-                    pipCtx.stroke();
-                }
-            }
-            pipCtx.restore();
-
-            const barHeight = Math.max(10, pipCanvas.height * 0.02);
-            const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
-            const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
-            const progWidth = (remainMs / totalMs) * pipCanvas.width;
-            
-            pipCtx.fillStyle = '#111'; pipCtx.fillRect(0, pipCanvas.height - barHeight, pipCanvas.width, barHeight);
-            pipCtx.fillStyle = '#00d4ff'; pipCtx.fillRect(0, pipCanvas.height - barHeight, progWidth, barHeight);
-
-            const fontSize = Math.max(30, pipCanvas.height * 0.05);
-            pipCtx.font = "bold " + fontSize + "px sans-serif"; pipCtx.textBaseline = 'top';
-            let sec = Math.ceil(remainMs / 1000); let m = Math.floor(sec / 60); let s = sec % 60; 
-            const timeText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
-            const textWidth = pipCtx.measureText(timeText).width;
-            pipCtx.fillStyle = 'rgba(0,0,0,0.6)'; pipCtx.fillRect(0, 0, textWidth + fontSize, fontSize * 1.5);
-            pipCtx.fillStyle = '#00d4ff'; pipCtx.fillText(timeText, fontSize/2, fontSize/4);
+            drawToCanvas(pipCanvas, pipCtx, true);
         }
 
         let pointerStartX = 0; let lastTapTime = 0; const imgContainer = document.getElementById('image-container');
