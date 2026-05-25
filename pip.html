@@ -2,10 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e1e1e">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Croquis Timer">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="display" content="standalone">
@@ -22,20 +22,40 @@
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
         
-        #top-panel { position: relative; height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid var(--border-color); }
-        .top-left { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 150px; }
-        .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1; max-width: 150px; }
+        #top-panel { 
+            position: relative; 
+            height: calc(60px + env(safe-area-inset-top, 0px)); 
+            background-color: var(--panel-bg); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+            padding: 0 15px 12px 15px; 
+            z-index: 100; 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        .top-left { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 150px; height: 36px; }
+        .top-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1; max-width: 150px; height: 36px; }
         
         #phase-label { color: var(--hm-color); font-weight: bold; font-size: 0.8rem; white-space: nowrap; }
-        #timer-label { position: absolute; left: 50%; transform: translateX(-50%); font-size: 1.8rem; font-weight: bold; text-align: center; color: var(--accent); letter-spacing: 2px; }
+        #timer-label { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); font-size: 1.8rem; font-weight: bold; text-align: center; color: var(--accent); letter-spacing: 2px; }
         
         .icon-btn { background: none; border: none; color: #aaa; cursor: pointer; padding: 5px; display: flex; justify-content: center; align-items: center; }
         .icon-btn:hover { color: #fff; }
         
         #history-panel {
-            position: absolute; top: 60px; left: 0; width: 260px; height: calc(100dvh - 60px);
-            background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); border-right: 1px solid var(--border-color);
-            z-index: 90; transform: translateX(-100%); transition: transform 0.3s ease; display: flex; flex-direction: column;
+            position: absolute; 
+            top: calc(60px + env(safe-area-inset-top, 0px)); 
+            left: 0; 
+            width: 260px; 
+            height: calc(100dvh - 60px - env(safe-area-inset-top, 0px));
+            background-color: rgba(0, 0, 0, 0.85); 
+            backdrop-filter: blur(5px); 
+            border-right: 1px solid var(--border-color);
+            z-index: 90; 
+            transform: translateX(-100%); 
+            transition: transform 0.3s ease; 
+            display: flex; 
+            flex-direction: column;
         }
         #history-panel.open { transform: translateX(0); }
         #history-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; color: var(--accent); font-weight: bold; }
@@ -53,7 +73,7 @@
         #progress-container { width: 100%; height: 4px; background-color: #222; }
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); }
         
-        #bottom-panel { position: relative; background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 250px; opacity: 1; overflow: visible; }
+        #bottom-panel { position: relative; background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 250px; opacity: 1; overflow: visible; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
         #bottom-panel.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; border-top: 0px solid transparent; opacity: 0; overflow: hidden; }
         
         button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 45px; display: flex; justify-content: center; align-items: center; font-size: 0.9rem;}
@@ -71,7 +91,7 @@
         .text-btn { font-size: 0.8rem; padding: 6px 10px; min-width: auto; font-weight: bold; }
 
         #manage-popup {
-            position: absolute; bottom: 60px; left: 10px; background-color: rgba(30, 30, 30, 0.95);
+            position: absolute; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); left: 10px; background-color: rgba(30, 30, 30, 0.95);
             border: 1px solid var(--border-color); border-radius: 6px; padding: 8px;
             display: flex; flex-direction: column; gap: 5px; z-index: 150;
             opacity: 0; pointer-events: none; transform: translateY(10px); transition: all 0.2s ease;
@@ -82,11 +102,11 @@
         .popup-danger { color: #ff5555 !important; }
 
         @media (max-width: 440px) {
-            #top-panel { padding: 0 8px; }
-            .top-left, .top-right { max-width: 110px; gap: 4px; }
+            #top-panel { padding: 0 8px 12px 8px; }
+            .top-left, .top-right { max-width: 110px; gap: 4px; height: 36px; }
             .icon-btn { padding: 3px; }
             .svg-icon { width: 18px; height: 18px; }
-            #timer-label { font-size: 1.5rem; letter-spacing: 1px; }
+            #timer-label { font-size: 1.5rem; letter-spacing: 1px; bottom: 12px; }
             #history-panel { width: 100%; border-right: none; }
             #history-content { grid-template-columns: repeat(3, 1fr); }
             button { padding: 6px 8px; min-width: 38px; }
@@ -165,7 +185,7 @@
         
         <span class="separator">|</span>
         
-        <button id="pip-btn" onclick="togglePiP()" title="小窓(PiP)"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg></button>
+        <button id="pip-btn" onclick="togglePiP()" title="小窓(PiP)">📺</button>
         <button id="eye-btn" onclick="toggleEyeHide()" title="5秒後に画像を隠す">👁️</button>
         <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()" title="ハードモード"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M13,2.05v9h6L7,22v-9H2L13,2.05z"/></svg></button>
 
@@ -246,11 +266,8 @@
             dbFavImages = await getAllFavsFromDB();
             initMediaSession();
             
-            // Service Workerの登録 (PWAキャッシュ用)
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js').catch(() => {
-                    // SWが存在しない環境（ローカル単一ファイル起動時など）では無視する
-                });
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
             }
         };
 
