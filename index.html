@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="display" content="standalone">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>最強Croquis App (管理機能追加版)</title>
+    <title>最強Croquis App (修正版)</title>
     
     <style>
         :root { 
@@ -46,7 +46,6 @@
         #fav-icon-large { position: absolute; top: 10px; right: 10px; font-size: 2rem; color: gold; display: none; text-shadow: 0 0 5px rgba(0,0,0,0.8); z-index: 10; pointer-events: none; }
         
         #progress-container { width: 100%; height: 4px; background-color: #222; }
-        /* トランジションを外し、JSのrequestAnimationFrameで滑らかに制御する */
         #progress-bar { width: 100%; height: 100%; background-color: var(--accent); }
         
         #bottom-panel { position: relative; background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 250px; opacity: 1; overflow: visible; }
@@ -66,7 +65,6 @@
         select { outline: none; text-align: center; font-weight: bold; appearance: none; -webkit-appearance: none; padding: 8px 16px; background-color: var(--btn-bg); color: #ddd; border: none; border-radius: 4px; cursor: pointer; }
         .text-btn { font-size: 0.8rem; padding: 6px 10px; min-width: auto; font-weight: bold; }
 
-        /* 管理ポップアップ用メニュー */
         #manage-popup {
             position: absolute; bottom: 60px; left: 10px; background-color: rgba(30, 30, 30, 0.95);
             border: 1px solid var(--border-color); border-radius: 6px; padding: 8px;
@@ -101,7 +99,7 @@
         <div id="timer-label">00:30</div>
         <div class="top-right">
             <button class="icon-btn" id="bg-btn" onclick="cycleBg()" title="背景色"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></button>
-            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="ミュート">
+            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="音切替方法">
                 <svg viewBox="0 0 24 24" class="svg-icon" id="icon-vol"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
             </button>
             <button class="icon-btn" onclick="toggleBottomPanel()" title="メニュー開閉"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
@@ -111,6 +109,7 @@
     <div id="history-panel">
         <div id="history-header">
             <span>履歴</span>
+            <button id="history-filter-btn" onclick="toggleHistoryFilter()" style="background-color:#444; color:#fff; font-size:0.75rem; padding:2px 8px; min-width:auto;">全て</button>
             <button class="icon-btn" onclick="toggleHistoryPanel()"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
         </div>
         <div id="history-content"></div>
@@ -162,6 +161,7 @@
         <span class="separator">|</span>
         
         <button id="pip-btn" onclick="togglePiP()" title="小窓(PiP)"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg></button>
+        <button id="eye-btn" onclick="toggleEyeHide()" title="5秒後に画像を隠す">👁️</button>
         <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()" title="ハードモード"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M13,2.05v9h6L7,22v-9H2L13,2.05z"/></svg></button>
 
         <div id="manage-popup">
@@ -178,17 +178,20 @@
         let historyList = [], historyPos = -1, historyUrls = [];
         let timerSeconds = 30, remaining = 30, isRunning = false, expectedEndTime = 0;
         let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false };
-        let isMuted = true, bgMode = 0, isImageHidden = false; // デフォルトミュート
+        let isMuted = true, bgMode = 0, isImageHidden = false; 
         let hmActive = false, hmPhase = 0;
         const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
         let currentImageUrl = null, resizeTimer;
-        let animationFrameId; // 滑らかなバー用
+        let animationFrameId; 
 
-        // ローカル管理データ
+        // 5秒後に隠す管理用変数
+        let isEyeHideEnabled = false;
+        let eyeHideTimeout = null;
+        let showFavsOnly = false; // お気に入りフィルターフラグ
+
         let skipList = JSON.parse(localStorage.getItem('croquis_skips') || '[]');
         let favList = JSON.parse(localStorage.getItem('croquis_favs') || '[]');
 
-        // PiP環境の遅延初期化（iOSオーディオ権限対策）
         let pipVideo, pipCanvas, pipCtx, isPiP = false, pipInitialized = false;
 
         const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
@@ -203,7 +206,8 @@
             phase: document.getElementById('phase-label'), hmBtn: document.getElementById('hm-btn'),
             btnHmShow: document.getElementById('btn-hm-show'), btnHmHide: document.getElementById('btn-hm-hide'),
             muteBtn: document.getElementById('mute-btn'), pipBtn: document.getElementById('pip-btn'),
-            favIcon: document.getElementById('fav-icon-large'), managePopup: document.getElementById('manage-popup')
+            favIcon: document.getElementById('fav-icon-large'), managePopup: document.getElementById('manage-popup'),
+            eyeBtn: document.getElementById('eye-btn')
         };
 
         function toggleBottomPanel() { document.getElementById('bottom-panel').classList.toggle('hidden'); }
@@ -224,7 +228,6 @@
             if(images.length === 0) return;
             const file = images[currentIndex];
             if(skipList.includes(file.name)) {
-                // スキップ対象なら次へ（無限ループ防止のため非同期呼び出し）
                 setTimeout(function(){ nextImage(true); }, 10);
                 return;
             }
@@ -236,7 +239,17 @@
             currentImageUrl = URL.createObjectURL(file);
             ui.img.src = currentImageUrl;
             ui.img.style.display = 'block';
-            ui.img.onload = applyFilters;
+            ui.img.onload = function() {
+                applyFilters();
+                // 👁️目のボタン連動処理
+                clearTimeout(eyeHideTimeout);
+                if (isEyeHideEnabled && !hmActive) {
+                    eyeHideTimeout = setTimeout(function() {
+                        isImageHidden = true;
+                        applyFilters();
+                    }, 5000);
+                }
+            };
             ui.img.onerror = function() { nextImage(); };
         }
 
@@ -268,7 +281,13 @@
             applyFilters(); 
         }
 
-        // --- 管理リスト操作 ---
+        // 👁️目のボタン処理のトグル
+        function toggleEyeHide() {
+            isEyeHideEnabled = !isEyeHideEnabled;
+            if(isEyeHideEnabled) { ui.eyeBtn.classList.add("active"); } else { ui.eyeBtn.classList.remove("active"); clearTimeout(eyeHideTimeout); isImageHidden = false; applyFilters(); }
+            loadImage();
+        }
+
         function toggleFavCurrent() {
             if(images.length === 0) return;
             const fname = images[currentIndex].name;
@@ -277,6 +296,7 @@
             localStorage.setItem('croquis_favs', JSON.stringify(favList));
             ui.favIcon.style.display = favList.includes(fname) ? 'block' : 'none';
             ui.managePopup.classList.remove('show');
+            if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
         }
         function skipCurrent() {
             if(images.length === 0) return;
@@ -290,6 +310,7 @@
             localStorage.removeItem('croquis_skips'); localStorage.removeItem('croquis_favs');
             ui.favIcon.style.display = 'none';
             ui.managePopup.classList.remove('show');
+            if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
             alert("お気に入り・スキップ設定をリセットしました。");
         }
 
@@ -305,12 +326,23 @@
                     if (historyList.length > 100) { historyList.shift(); } else { historyPos++; } 
                 }
             } else {
-                // スキップによる自動送りの場合は履歴に積まずにインデックスだけ進める
                 currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; 
             }
             
             loadImage(); 
-            if(!isSkipping) { resetTimer(); playSound(); }
+            
+            // 自動再始動の整合性を調整
+            remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
+            if (isRunning) {
+                expectedEndTime = Date.now() + (remaining * 1000);
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = requestAnimationFrame(updateSmoothTimer);
+            } else {
+                updateTimerText(remaining);
+                ui.prog.style.width = '100%';
+            }
+
+            if(!isSkipping) { playSound(); }
             if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
         }
 
@@ -324,14 +356,27 @@
             else { panel.classList.add('open'); renderHistoryThumbs(); }
         }
 
+        function toggleHistoryFilter() {
+            showFavsOnly = !showFavsOnly;
+            document.getElementById('history-filter-btn').innerText = showFavsOnly ? '★のみ' : '全て';
+            renderHistoryThumbs();
+        }
+
         function clearHistoryThumbs() { document.getElementById('history-content').innerHTML = ''; historyUrls.forEach(function(url) { URL.revokeObjectURL(url); }); historyUrls = []; }
 
         function renderHistoryThumbs() {
             const content = document.getElementById('history-content');
             clearHistoryThumbs();
             const start = Math.max(0, historyList.length - 30);
+            let matchCount = 0;
+
             for (let i = historyList.length - 1; i >= start; i--) {
                 const imgIndex = historyList[i]; const file = images[imgIndex]; if(!file) continue;
+                
+                // お気に入りフィルター条件の適用
+                if (showFavsOnly && !favList.includes(file.name)) continue;
+                matchCount++;
+
                 const url = URL.createObjectURL(file); historyUrls.push(url);
                 
                 const thumbDiv = document.createElement('div');
@@ -347,11 +392,14 @@
                 }
                 content.appendChild(thumbDiv);
             }
+
+            if(showFavsOnly && matchCount === 0) {
+                content.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#666; font-size:0.8rem; padding:20px 0;">★画像がありません</div>';
+            }
         }
 
         function jumpToHistory(index) { historyPos = index; currentIndex = historyList[historyPos]; if (hmActive) exitHardMode(); loadImage(); resetTimer(); stopTimer(); renderHistoryThumbs(); }
         
-        // --- 滑らかなタイマー処理 ---
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
         function startTimer() { 
             isRunning = true; ui.playBtn.innerHTML = iconPauseSVG; ui.playBtn.classList.remove("accent"); 
@@ -374,21 +422,25 @@
                 remaining = 0; 
                 updateTimerText(0); 
                 ui.prog.style.width = '0%';
+                cancelAnimationFrame(animationFrameId);
                 hmActive ? hmNextPhase() : nextImage(); 
             } else { 
                 updateTimerText(remaining);
                 const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000;
                 ui.prog.style.width = ((remainMs / totalMs) * 100) + '%';
-                if (isPiP) updatePiP(); // PiPの更新
+                if (isPiP) updatePiP(); 
                 animationFrameId = requestAnimationFrame(updateSmoothTimer);
             }
         }
         
         function resetTimer() { 
             remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
-            if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); 
-            updateTimerText(remaining);
-            ui.prog.style.width = ((remaining / (hmActive ? hmPhases[hmPhase].s : timerSeconds)) * 100) + '%';
+            if (isRunning) {
+                expectedEndTime = Date.now() + (remaining * 1000); 
+            } else {
+                updateTimerText(remaining);
+                ui.prog.style.width = '100%';
+            }
         }
         function setTimer(sec) { exitHardMode(); timerSeconds = sec; const select = document.getElementById('time-select'); if (select) select.value = sec; resetTimer(); }
         
@@ -407,7 +459,6 @@
         function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); resetTimer(); }
         function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
 
-        // --- iOS回避型の安全な小窓(PiP)初期化 ---
         function initPiP() {
             if(pipInitialized) return true;
             try {
@@ -431,7 +482,7 @@
         }
 
         async function togglePiP() {
-            if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いのブラウザはPiP（小窓描画）機能に未対応です。"); return; }
+            if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境（iOS等）はブラウザの仕様上、この方式のPiP機能に対応していません。"); return; }
             const isPiPOpen = document.pictureInPictureElement || (pipVideo.webkitPresentationMode === 'picture-in-picture');
 
             if (isPiPOpen) {
