@@ -2,28 +2,20 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="display" content="standalone">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>最強Croquis App (PiP完全フルスペック版)</title>
+    <title>最強Croquis App (完全版)</title>
     
-    <script>
-        window.onerror = function(msg, url, lineNo) {
-            document.body.innerHTML = '<div style="color:red; background:white; padding:20px;"><b>エラー発生:</b><br>' + msg + '<br>行: ' + lineNo + '</div>';
-            return false;
-        };
-    </script>
-
     <style>
         :root { 
-            --bg-color: #1e1e1e;
-            --panel-bg: #111; 
-            --text-color: #fff; 
-            --border-color: #333;
-            --btn-bg: #333; 
-            --accent: #00d4ff; 
-            --hm-color: #ffb020; 
+            --bg-color: #1e1e1e; --panel-bg: #111; --text-color: #fff; --border-color: #333;
+            --btn-bg: #333; --accent: #00d4ff; --hm-color: #ffb020; 
         }
+        html, body { height: 100%; }
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
-        body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
         
         #top-panel { position: relative; height: 60px; background-color: var(--panel-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 100; border-bottom: 1px solid var(--border-color); }
         .top-left { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 150px; }
@@ -36,7 +28,7 @@
         .icon-btn:hover { color: #fff; }
         
         #history-panel {
-            position: absolute; top: 60px; left: 0; width: 260px; height: calc(100vh - 60px);
+            position: absolute; top: 60px; left: 0; width: 260px; height: calc(100dvh - 60px);
             background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); border-right: 1px solid var(--border-color);
             z-index: 90; transform: translateX(-100%); transition: transform 0.3s ease; display: flex; flex-direction: column;
         }
@@ -45,17 +37,19 @@
         #history-content { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; align-content: start; }
         .history-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid transparent; background-color: #222; }
         .history-thumb.current { border-color: var(--accent); }
+        .fav-badge { position: absolute; top: 2px; right: 2px; color: gold; font-size: 12px; pointer-events: none; }
 
         #image-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; touch-action: none; }
         #canvas-area { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         #main-image { max-width: 100%; max-height: 100%; object-fit: contain; display: none; transition: opacity 0.2s; }
         #grid-overlay { position: absolute; pointer-events: none; display: none; border: 1px solid rgba(128,128,128,0.4); background-image: linear-gradient(to right, rgba(128,128,128,0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.4) 1px, transparent 1px); background-size: 33.33% 33.33%; z-index: 5; }
+        #fav-icon-large { position: absolute; top: 10px; right: 10px; font-size: 2rem; color: gold; display: none; text-shadow: 0 0 5px rgba(0,0,0,0.8); z-index: 10; pointer-events: none; }
         
         #progress-container { width: 100%; height: 4px; background-color: #222; }
-        #progress-bar { width: 100%; height: 100%; background-color: var(--accent); transition: width 0.2s linear; }
+        #progress-bar { width: 100%; height: 100%; background-color: var(--accent); }
         
-        #bottom-panel { background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 250px; opacity: 1; overflow: hidden; }
-        #bottom-panel.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; border-top: 0px solid transparent; opacity: 0; }
+        #bottom-panel { position: relative; background-color: var(--panel-bg); padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; border-top: 1px solid var(--border-color); transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease; max-height: 250px; opacity: 1; overflow: visible; }
+        #bottom-panel.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; border-top: 0px solid transparent; opacity: 0; overflow: hidden; }
         
         button { background-color: var(--btn-bg); color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 45px; display: flex; justify-content: center; align-items: center; font-size: 0.9rem;}
         button:hover { background-color: #444; }
@@ -71,52 +65,52 @@
         select { outline: none; text-align: center; font-weight: bold; appearance: none; -webkit-appearance: none; padding: 8px 16px; background-color: var(--btn-bg); color: #ddd; border: none; border-radius: 4px; cursor: pointer; }
         .text-btn { font-size: 0.8rem; padding: 6px 10px; min-width: auto; font-weight: bold; }
 
+        #manage-popup {
+            position: absolute; bottom: 60px; left: 10px; background-color: rgba(30, 30, 30, 0.95);
+            border: 1px solid var(--border-color); border-radius: 6px; padding: 8px;
+            display: flex; flex-direction: column; gap: 5px; z-index: 150;
+            opacity: 0; pointer-events: none; transform: translateY(10px); transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #manage-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        #manage-popup button { justify-content: flex-start; gap: 8px; padding: 10px; font-size: 0.9rem; }
+        .popup-danger { color: #ff5555 !important; }
+
         @media (max-width: 440px) {
             #top-panel { padding: 0 8px; }
-            .top-left { max-width: 110px; gap: 4px; }
-            .top-right { max-width: 110px; gap: 4px; }
+            .top-left, .top-right { max-width: 110px; gap: 4px; }
             .icon-btn { padding: 3px; }
             .svg-icon { width: 18px; height: 18px; }
             #timer-label { font-size: 1.5rem; letter-spacing: 1px; }
-            #phase-label { font-size: 0.7rem; }
             #history-panel { width: 100%; border-right: none; }
             #history-content { grid-template-columns: repeat(3, 1fr); }
-            .text-btn { font-size: 0.75rem; padding: 6px 8px;}
+            button { padding: 6px 8px; min-width: 38px; }
         }
     </style>
 </head>
 <body>
     <div id="top-panel">
         <div class="top-left">
-            <button class="icon-btn" onclick="toggleHistoryPanel()" title="履歴">
-                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-            </button>
+            <button class="icon-btn" onclick="toggleHistoryPanel()" title="履歴"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg></button>
             <div id="phase-label"></div>
             <button class="text-btn" id="btn-hm-show" onclick="isImageHidden=false; applyFilters();" style="display:none;">表示</button>
             <button class="text-btn" id="btn-hm-hide" onclick="isImageHidden=true; applyFilters();" style="display:none;">隠す</button>
         </div>
-        
         <div id="timer-label">00:30</div>
-        
         <div class="top-right">
-            <button class="icon-btn" id="bg-btn" onclick="cycleBg()" title="背景色">
-                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+            <button class="icon-btn" id="bg-btn" onclick="cycleBg()" title="背景色"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></button>
+            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="音切替">
+                <svg viewBox="0 0 24 24" class="svg-icon" id="icon-vol"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
             </button>
-            <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="ミュート">
-                <svg viewBox="0 0 24 24" class="svg-icon" id="icon-vol"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-            </button>
-            <button class="icon-btn" onclick="toggleBottomPanel()" title="メニュー開閉">
-                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-            </button>
+            <button class="icon-btn" onclick="toggleBottomPanel()" title="メニュー開閉"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
         </div>
     </div>
 
     <div id="history-panel">
         <div id="history-header">
-            <span>履歴 (答え合わせ)</span>
-            <button class="icon-btn" onclick="toggleHistoryPanel()">
-                <svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-            </button>
+            <span>履歴管理</span>
+            <button id="history-filter-btn" onclick="toggleHistoryFilter()" style="background-color:#444; color:#fff; font-size:0.75rem; padding:4px 10px; min-width:auto; font-weight:bold; border-radius:4px;">全て (履歴)</button>
+            <button class="icon-btn" onclick="toggleHistoryPanel()"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
         </div>
         <div id="history-content"></div>
     </div>
@@ -125,6 +119,7 @@
         <div id="canvas-area">
             <img id="main-image" src="" draggable="false">
             <div id="grid-overlay"></div>
+            <div id="fav-icon-large">★</div>
         </div>
     </div>
 
@@ -134,8 +129,9 @@
         <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;">
         <input type="file" id="file-input" multiple accept="image/*" style="display:none;">
         
-        <button class="text-btn" onclick="document.getElementById('folder-input').click()">📁 フォルダ</button>
-        <button class="text-btn" onclick="document.getElementById('file-input').click()">📄 複数画像</button>
+        <button onclick="document.getElementById('folder-input').click()" title="フォルダ">📁</button>
+        <button onclick="document.getElementById('file-input').click()" title="複数画像">📄</button>
+        <button onclick="toggleManagePopup()" id="manage-btn" title="画像管理">📦</button>
         
         <span class="separator">|</span>
 
@@ -156,67 +152,49 @@
         
         <span class="separator">|</span>
         
-        <button id="shuffle-btn" onclick="toggle('shuffle')" class="active" title="シャッフル">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-        </button>
-        <button id="flipH-btn" onclick="toggle('flipH')" title="左右反転">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M10,6 L4,12 L10,18 Z" /><rect x="11" y="4" width="2" height="16" /><path d="M14,6 L20,12 L14,18 Z" /></svg>
-        </button>
-        <button id="flipV-btn" onclick="toggle('flipV')" title="上下反転">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M6,10 L12,4 L18,10 Z" /><rect x="4" y="11" width="16" height="2" /><path d="M6,14 L12,20 L18,14 Z" /></svg>
-        </button>
-        <button id="grid-btn" onclick="toggle('grid')" title="グリッド">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
-        </button>
-        <button id="mono-btn" onclick="toggle('mono')" title="モノクロ">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17.93c3.95.49 7 3.85 7 7.93s-3.05 7.44-7 7.93V4.07z"/></svg>
-        </button>
-        <button id="hide-btn" onclick="toggle('hide')" title="5秒で隠す">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-        </button>
+        <button id="shuffle-btn" onclick="toggle('shuffle')" class="active" title="シャッフル"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg></button>
+        <button id="flipH-btn" onclick="toggle('flipH')" title="左右反転"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M10,6 L4,12 L10,18 Z" /><rect x="11" y="4" width="2" height="16" /><path d="M14,6 L20,12 L14,18 Z" /></svg></button>
+        <button id="flipV-btn" onclick="toggle('flipV')" title="上下反転"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M6,10 L12,4 L18,10 Z" /><rect x="4" y="11" width="16" height="2" /><path d="M6,14 L12,20 L18,14 Z" /></svg></button>
+        <button id="grid-btn" onclick="toggle('grid')" title="グリッド"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg></button>
+        <button id="mono-btn" onclick="toggle('mono')" title="モノクロ"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17.93c3.95.49 7 3.85 7 7.93s-3.05 7.44-7 7.93V4.07z"/></svg></button>
         
         <span class="separator">|</span>
         
-        <button id="pip-btn" onclick="togglePiP()" title="小窓(PiP)">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
-        </button>
-        <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()" title="ハードモード">
-            <svg viewBox="0 0 24 24" class="svg-icon"><path d="M13,2.05v9h6L7,22v-9H2L13,2.05z"/></svg>
-        </button>
+        <button id="pip-btn" onclick="togglePiP()" title="小窓(PiP)"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg></button>
+        <button id="eye-btn" onclick="toggleEyeHide()" title="5秒後に画像を隠す">👁️</button>
+        <button class="hard-mode" id="hm-btn" onclick="toggleHardMode()" title="ハードモード"><svg viewBox="0 0 24 24" class="svg-icon"><path d="M13,2.05v9h6L7,22v-9H2L13,2.05z"/></svg></button>
+
+        <div id="manage-popup">
+            <button onclick="toggleFavCurrent()">⭐ お気に入り登録/解除</button>
+            <button onclick="skipCurrent()" class="popup-danger">🗑️ この画像をスキップ</button>
+            <button onclick="clearManageData()">🔄 設定をリセット</button>
+        </div>
     </div>
 
-    <audio id="sound-player" src="音声.mp3" preload="auto"></audio>
+    <audio id="sound-player" src="音声.mp3" preload="none"></audio>
 
     <script>
-        let images = [], currentIndex = 0;
+        let sourceImages = []; 
+        let dbFavImages = [];  
+        let images = [], currentIndex = 0; 
+        let isFavMode = false; 
+
         let historyList = [], historyPos = -1, historyUrls = [];
-        let timerSeconds = 30, remaining = 30, isRunning = false, timerInterval;
-        let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false, hide: false };
-        let isMuted = false, bgMode = 0, isImageHidden = false, hideTimeout;
+        let timerSeconds = 30, remaining = 30, isRunning = false, expectedEndTime = 0;
+        let settings = { flipH: false, flipV: false, shuffle: true, grid: false, mono: false };
+        let isMuted = true, bgMode = 0, isImageHidden = false; 
         let hmActive = false, hmPhase = 0;
         const hmPhases = { 1: {t: "①暗記", s: 120, h: false}, 2: {t: "②記憶描写", s: 300, h: true}, 3: {t: "③模写", s: 900, h: false}, 4: {t: "④実践", s: 900, h: true} };
-        let currentImageUrl = null, expectedEndTime = 0, resizeTimer;
+        let currentImageUrl = null, resizeTimer;
+        let animationFrameId; 
 
-        // PiP環境の安全な初期化（DOMへの追加によるブラウザ制限の回避）
-        let pipVideo, pipCanvas, pipCtx, isPiP = false;
-        try {
-            pipVideo = document.createElement('video');
-            pipVideo.muted = true; 
-            pipVideo.playsInline = true;
-            
-            // 一部のブラウザ対策として画面の裏側にひっそりと配置する
-            pipVideo.style.position = 'fixed';
-            pipVideo.style.bottom = '0';
-            pipVideo.style.right = '0';
-            pipVideo.style.width = '1px';
-            pipVideo.style.height = '1px';
-            pipVideo.style.opacity = '0.01';
-            pipVideo.style.pointerEvents = 'none';
-            document.body.appendChild(pipVideo); // ここが重要
+        let isEyeHideEnabled = false, eyeHideTimeout = null;
+        let showFavsOnly = false; 
 
-            pipCanvas = document.createElement('canvas');
-            pipCtx = pipCanvas.getContext('2d');
-        } catch(e) { console.warn("PiP Init Error:", e); }
+        let skipList = JSON.parse(localStorage.getItem('croquis_skips') || '[]');
+        let pipVideo, pipCanvas, pipCtx, isPiP = false, pipInitialized = false;
+        let docPipWindow = null; 
+        let db; const dbName = "CroquisAppDB", storeName = "favorites";
 
         const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
         const iconPauseSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
@@ -229,33 +207,88 @@
             grid: document.getElementById('grid-overlay'), sound: document.getElementById('sound-player'),
             phase: document.getElementById('phase-label'), hmBtn: document.getElementById('hm-btn'),
             btnHmShow: document.getElementById('btn-hm-show'), btnHmHide: document.getElementById('btn-hm-hide'),
-            muteBtn: document.getElementById('mute-btn'), pipBtn: document.getElementById('pip-btn')
+            muteBtn: document.getElementById('mute-btn'), pipBtn: document.getElementById('pip-btn'),
+            favIcon: document.getElementById('fav-icon-large'), managePopup: document.getElementById('manage-popup'),
+            eyeBtn: document.getElementById('eye-btn')
+        };
+
+        function initDB() {
+            return new Promise((resolve) => {
+                let request = indexedDB.open(dbName, 1);
+                request.onupgradeneeded = function(e) { e.target.result.createObjectStore(storeName, { keyPath: "name" }); };
+                request.onsuccess = function(e) { db = e.target.result; resolve(); };
+                request.onerror = function() { resolve(); };
+            });
+        }
+        function saveFavToDB(name, dataUrl) { if (!db) return; db.transaction(storeName, "readwrite").objectStore(storeName).put({ name: name, data: dataUrl, timestamp: Date.now() }); }
+        function deleteFavFromDB(name) { if (!db) return; db.transaction(storeName, "readwrite").objectStore(storeName).delete(name); }
+        function getAllFavsFromDB() {
+            return new Promise((resolve) => {
+                if (!db) { resolve([]); return; }
+                let request = db.transaction(storeName, "readonly").objectStore(storeName).getAll();
+                request.onsuccess = function() { resolve(request.result || []); };
+                request.onerror = function() { resolve([]); };
+            });
+        }
+
+        function checkDevice() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (isIOS && ui.pipBtn) ui.pipBtn.style.display = 'none';
+        }
+
+        window.onload = async function() {
+            checkDevice();
+            await initDB();
+            dbFavImages = await getAllFavsFromDB();
+            initMediaSession();
         };
 
         function toggleBottomPanel() { document.getElementById('bottom-panel').classList.toggle('hidden'); }
+        function toggleManagePopup() { ui.managePopup.classList.toggle('show'); }
+        document.addEventListener('click', function(e) { if(!e.target.closest('#manage-popup') && !e.target.closest('#manage-btn')) { ui.managePopup.classList.remove('show'); } });
 
         function handleFiles(e) {
             const files = Array.from(e.target.files).filter(function(f) { return f.type.startsWith('image/'); });
-            if(files.length > 0) { images = files; if(settings.shuffle) shuffleArray(images); currentIndex = 0; historyList = [currentIndex]; historyPos = 0; loadImage(); }
+            if(files.length > 0) { 
+                sourceImages = files; 
+                if(settings.shuffle) shuffleArray(sourceImages); 
+                images = sourceImages; isFavMode = false; showFavsOnly = false;
+                document.getElementById('history-filter-btn').innerText = '全て (履歴)';
+                currentIndex = 0; historyList = []; historyPos = -1; nextImage(); 
+            }
             e.target.value = ''; 
         }
-
         document.getElementById('folder-input').addEventListener('change', handleFiles);
         document.getElementById('file-input').addEventListener('change', handleFiles);
 
         function shuffleArray(arr) { for(let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const temp = arr[i]; arr[i] = arr[j]; arr[j] = temp; } }
 
         function loadImage() {
-            if(images.length === 0) return;
-            clearTimeout(hideTimeout);
+            if(images.length === 0) { ui.img.style.display = 'none'; ui.favIcon.style.display = 'none'; return; }
+            const item = images[currentIndex];
+            if(!item) return;
+
+            if(!isFavMode && skipList.includes(item.name)) { setTimeout(function(){ nextImage(true); }, 10); return; }
+
             isImageHidden = false;
-            if (currentImageUrl) { URL.revokeObjectURL(currentImageUrl); } 
-            currentImageUrl = URL.createObjectURL(images[currentIndex]);
-            ui.img.src = currentImageUrl;
+            const isFav = isFavMode ? true : dbFavImages.some(function(f){ return f.name === item.name; });
+            ui.favIcon.style.display = isFav ? 'block' : 'none';
+
+            if (currentImageUrl && !currentImageUrl.startsWith('data:')) { URL.revokeObjectURL(currentImageUrl); } 
+            
+            if (item.data) { currentImageUrl = item.data; ui.img.src = currentImageUrl; } 
+            else { currentImageUrl = URL.createObjectURL(item); ui.img.src = currentImageUrl; }
+            
             ui.img.style.display = 'block';
-            ui.img.onload = applyFilters;
+            ui.img.onload = function() {
+                applyFilters();
+                clearTimeout(eyeHideTimeout);
+                if (isEyeHideEnabled && !hmActive) {
+                    eyeHideTimeout = setTimeout(function() { isImageHidden = true; applyFilters(); }, 5000);
+                }
+            };
             ui.img.onerror = function() { nextImage(); };
-            if(settings.hide && !hmActive) { hideTimeout = setTimeout(function() { isImageHidden = true; applyFilters(); }, 5000); }
+            updateMediaSession();
         }
 
         function applyFilters() {
@@ -267,11 +300,8 @@
             ui.img.style.opacity = isImageHidden ? '0' : '1';
             
             if(settings.grid && !isImageHidden && ui.img.complete) {
-                ui.grid.style.display = 'block';
-                ui.grid.style.width = ui.img.offsetWidth + 'px';
-                ui.grid.style.height = ui.img.offsetHeight + 'px';
-                ui.grid.style.left = ui.img.offsetLeft + 'px';
-                ui.grid.style.top = ui.img.offsetTop + 'px';
+                ui.grid.style.display = 'block'; ui.grid.style.width = ui.img.offsetWidth + 'px';
+                ui.grid.style.height = ui.img.offsetHeight + 'px'; ui.grid.style.left = ui.img.offsetLeft + 'px'; ui.grid.style.top = ui.img.offsetTop + 'px';
             } else { ui.grid.style.display = 'none'; }
             
             if (isPiP) updatePiP();
@@ -283,16 +313,98 @@
             settings[key] = !settings[key]; 
             const btn = document.getElementById(key + '-btn');
             if(btn) { if(settings[key]) { btn.classList.add("active"); } else { btn.classList.remove("active"); } }
-            if(key === 'hide' && !settings.hide) isImageHidden = false;
+            if(key === 'shuffle' && !isFavMode && sourceImages.length > 0) { shuffleArray(sourceImages); images = sourceImages; }
             applyFilters(); 
         }
 
-        function nextImage() { 
+        function toggleEyeHide() {
+            isEyeHideEnabled = !isEyeHideEnabled;
+            if(isEyeHideEnabled) { ui.eyeBtn.classList.add("active"); } else { ui.eyeBtn.classList.remove("active"); clearTimeout(eyeHideTimeout); isImageHidden = false; applyFilters(); }
+            loadImage();
+        }
+
+        function toggleFavCurrent() {
+            if(images.length === 0) return;
+            const item = images[currentIndex];
+            const fname = item.name;
+            
+            if (isFavMode) {
+                dbFavImages = dbFavImages.filter(function(f){ return f.name !== fname; });
+                deleteFavFromDB(fname);
+                ui.managePopup.classList.remove('show');
+                if (dbFavImages.length === 0) {
+                    alert("お気に入りが空になりました。通常モードに戻ります。");
+                    isFavMode = false; showFavsOnly = false; images = sourceImages;
+                    document.getElementById('history-filter-btn').innerText = '全て (履歴)';
+                    currentIndex = 0; historyList = []; historyPos = -1; loadImage();
+                } else {
+                    currentIndex = currentIndex % dbFavImages.length; loadImage();
+                }
+                renderHistoryThumbs();
+            } else {
+                const foundIdx = dbFavImages.findIndex(function(f){ return f.name === fname; });
+                if(foundIdx > -1) {
+                    dbFavImages.splice(foundIdx, 1); deleteFavFromDB(fname); ui.favIcon.style.display = 'none';
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const dataUrl = e.target.result;
+                        dbFavImages.push({ name: fname, data: dataUrl });
+                        saveFavToDB(fname, dataUrl);
+                        ui.favIcon.style.display = 'block';
+                        if(document.getElementById('history-panel').classList.contains('open') && showFavsOnly) renderHistoryThumbs();
+                    };
+                    reader.readAsDataURL(item);
+                }
+                ui.managePopup.classList.remove('show');
+            }
+        }
+
+        function skipCurrent() {
+            if(images.length === 0 || isFavMode) return;
+            const fname = images[currentIndex].name;
+            if(!skipList.includes(fname)) { skipList.push(fname); localStorage.setItem('croquis_skips', JSON.stringify(skipList)); }
+            ui.managePopup.classList.remove('show');
+            nextImage();
+        }
+
+        function clearManageData() {
+            if(!confirm("お気に入り画像データ、スキップ設定をすべて削除して初期化しますか？")) return;
+            skipList = []; dbFavImages = []; localStorage.removeItem('croquis_skips');
+            if(db) db.transaction(storeName, "readwrite").objectStore(storeName).clear();
+            
+            ui.favIcon.style.display = 'none'; ui.managePopup.classList.remove('show');
+            isFavMode = false; showFavsOnly = false;
+            document.getElementById('history-filter-btn').innerText = '全て (履歴)';
+            images = sourceImages; currentIndex = 0; historyList = []; historyPos = -1;
+            loadImage();
+            if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
+            alert("データを完全にリセットしました。");
+        }
+
+        function nextImage(isSkipping = false) { 
             if(images.length === 0) return; 
             if(hmActive) exitHardMode(); 
-            if (historyPos < historyList.length - 1) { historyPos++; currentIndex = historyList[historyPos]; } 
-            else { currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; historyList.push(currentIndex); if (historyList.length > 100) { historyList.shift(); } else { historyPos++; } }
-            loadImage(); resetTimer(); playSound(); 
+            
+            if (!isSkipping) {
+                if (historyPos < historyList.length - 1) { historyPos++; currentIndex = historyList[historyPos]; } 
+                else { 
+                    currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; 
+                    historyList.push(currentIndex); 
+                    if (historyList.length > 100) { historyList.shift(); } else { historyPos++; } 
+                }
+            } else {
+                currentIndex = settings.shuffle ? Math.floor(Math.random() * images.length) : (currentIndex + 1) % images.length; 
+            }
+            
+            loadImage(); 
+            remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
+            if (isRunning) {
+                expectedEndTime = Date.now() + (remaining * 1000); cancelAnimationFrame(animationFrameId); animationFrameId = requestAnimationFrame(updateSmoothTimer);
+            } else {
+                updateTimerText(remaining); ui.prog.style.width = '100%';
+            }
+            if(!isSkipping) { playSound(); }
             if(document.getElementById('history-panel').classList.contains('open')) renderHistoryThumbs();
         }
 
@@ -306,41 +418,103 @@
             else { panel.classList.add('open'); renderHistoryThumbs(); }
         }
 
+        function toggleHistoryFilter() {
+            showFavsOnly = !showFavsOnly;
+            if (!showFavsOnly) {
+                if (sourceImages.length > 0 && isFavMode) {
+                    isFavMode = false; images = sourceImages; currentIndex = 0; historyList = []; historyPos = -1; loadImage(); resetTimer();
+                }
+            }
+            document.getElementById('history-filter-btn').innerText = showFavsOnly ? '★ お気に入り' : '全て (履歴)';
+            renderHistoryThumbs();
+        }
+
         function clearHistoryThumbs() { document.getElementById('history-content').innerHTML = ''; historyUrls.forEach(function(url) { URL.revokeObjectURL(url); }); historyUrls = []; }
 
         function renderHistoryThumbs() {
             const content = document.getElementById('history-content');
             clearHistoryThumbs();
-            const start = Math.max(0, historyList.length - 30);
-            for (let i = historyList.length - 1; i >= start; i--) {
-                const imgIndex = historyList[i]; const file = images[imgIndex]; if(!file) continue;
-                const url = URL.createObjectURL(file); historyUrls.push(url);
-                const imgEl = document.createElement('img'); imgEl.src = url; imgEl.className = 'history-thumb' + (i === historyPos ? ' current' : '');
-                imgEl.onclick = (function(idx) { return function() { jumpToHistory(idx); if(window.innerWidth <= 440) toggleHistoryPanel(); }; })(i);
-                content.appendChild(imgEl);
+            
+            if (showFavsOnly) {
+                if (dbFavImages.length === 0) {
+                    content.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#666; font-size:0.8rem; padding:20px 0;">★画像がありません</div>'; return;
+                }
+                dbFavImages.forEach(function(item, idx) {
+                    const thumbDiv = document.createElement('div'); thumbDiv.style.position = 'relative';
+                    const imgEl = document.createElement('img'); imgEl.src = item.data; imgEl.className = 'history-thumb' + (isFavMode && currentIndex === idx ? ' current' : '');
+                    imgEl.onclick = function() {
+                        isFavMode = true; images = dbFavImages; currentIndex = idx;
+                        historyList = [idx]; historyPos = 0;
+                        if (hmActive) exitHardMode(); loadImage(); resetTimer();
+                        if(window.innerWidth <= 440) toggleHistoryPanel();
+                        renderHistoryThumbs();
+                    };
+                    thumbDiv.appendChild(imgEl);
+                    const badge = document.createElement('div'); badge.className = 'fav-badge'; badge.innerText = '★'; thumbDiv.appendChild(badge);
+                    content.appendChild(thumbDiv);
+                });
+            } else {
+                const currentPool = isFavMode ? dbFavImages : sourceImages;
+                const start = Math.max(0, historyList.length - 30); let matchCount = 0;
+                for (let i = historyList.length - 1; i >= start; i--) {
+                    const imgIndex = historyList[i]; const item = currentPool[imgIndex]; if(!item) continue;
+                    matchCount++;
+                    const thumbDiv = document.createElement('div'); thumbDiv.style.position = 'relative';
+                    const imgEl = document.createElement('img');
+                    if (item.data) { imgEl.src = item.data; } 
+                    else { const url = URL.createObjectURL(item); historyUrls.push(url); imgEl.src = url; }
+                    imgEl.className = 'history-thumb' + (i === historyPos ? ' current' : '');
+                    imgEl.onclick = (function(idx) {
+                        return function() { historyPos = idx; currentIndex = historyList[historyPos]; if (hmActive) exitHardMode(); loadImage(); resetTimer(); if(window.innerWidth <= 440) toggleHistoryPanel(); renderHistoryThumbs(); };
+                    })(i);
+                    thumbDiv.appendChild(imgEl);
+                    const isFav = isFavMode ? true : dbFavImages.some(function(f){ return f.name === item.name; });
+                    if(isFav) { const badge = document.createElement('div'); badge.className = 'fav-badge'; badge.innerText = '★'; thumbDiv.appendChild(badge); }
+                    content.appendChild(thumbDiv);
+                }
+                if(matchCount === 0) content.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#666; font-size:0.8rem; padding:20px 0;">履歴がありません</div>';
             }
         }
 
-        function jumpToHistory(index) { historyPos = index; currentIndex = historyList[historyPos]; if (hmActive) exitHardMode(); loadImage(); resetTimer(); stopTimer(); renderHistoryThumbs(); }
-        
         function toggleTimer() { if(images.length > 0) isRunning ? stopTimer() : startTimer(); }
-        function startTimer() { isRunning = true; ui.playBtn.innerHTML = iconPauseSVG; ui.playBtn.classList.remove("accent"); expectedEndTime = Date.now() + (remaining * 1000); clearInterval(timerInterval); timerInterval = setInterval(tick, 200); }
-        function stopTimer() { isRunning = false; ui.playBtn.innerHTML = iconPlaySVG; ui.playBtn.classList.add("accent"); clearInterval(timerInterval); }
-        function tick() { 
-            const now = Date.now(); remaining = Math.ceil((expectedEndTime - now) / 1000); 
-            if(remaining <= 0) { remaining = 0; updateTimerUI(); hmActive ? hmNextPhase() : nextImage(); } 
-            else { updateTimerUI(); } 
+        function startTimer() { 
+            isRunning = true; ui.playBtn.innerHTML = iconPauseSVG; ui.playBtn.classList.remove("accent"); 
+            expectedEndTime = Date.now() + (remaining * 1000); cancelAnimationFrame(animationFrameId); updateSmoothTimer();
+            updateMediaSession();
+            if(isPiP && pipVideo && pipVideo.paused) pipVideo.play().catch(function(){}); 
+        }
+        function stopTimer() { 
+            isRunning = false; ui.playBtn.innerHTML = iconPlaySVG; ui.playBtn.classList.add("accent"); cancelAnimationFrame(animationFrameId);
+            updateMediaSession();
+            if(isPiP && pipVideo && !pipVideo.paused) pipVideo.pause(); 
         }
         
-        function resetTimer() { remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); updateTimerUI(); }
+        function updateSmoothTimer() {
+            if(!isRunning) return;
+            const now = Date.now(); const remainMs = expectedEndTime - now; remaining = Math.ceil(remainMs / 1000);
+            if(remainMs <= 0) { 
+                remaining = 0; updateTimerText(0); ui.prog.style.width = '0%'; cancelAnimationFrame(animationFrameId);
+                hmActive ? hmNextPhase() : nextImage(); 
+            } else { 
+                updateTimerText(remaining);
+                const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000;
+                ui.prog.style.width = ((remainMs / totalMs) * 100) + '%';
+                if (isPiP) updatePiP(); 
+                animationFrameId = requestAnimationFrame(updateSmoothTimer);
+            }
+        }
+        
+        function resetTimer() { 
+            remaining = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
+            if (isRunning) { expectedEndTime = Date.now() + (remaining * 1000); } 
+            else { updateTimerText(remaining); ui.prog.style.width = '100%'; }
+        }
         function setTimer(sec) { exitHardMode(); timerSeconds = sec; const select = document.getElementById('time-select'); if (select) select.value = sec; resetTimer(); }
         
-        function updateTimerUI() { 
-            let m = Math.floor(remaining / 60); let s = remaining % 60; 
+        function updateTimerText(sec) { 
+            let m = Math.floor(sec / 60); let s = sec % 60; 
             ui.timer.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
-            const total = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
-            ui.prog.style.width = ((remaining / total) * 100) + '%'; 
-            if (isPiP) updatePiP(); 
+            if(isRunning && isPiP && sec % 2 === 0) updateMediaSession();
         }
         
         function toggleMute() { isMuted = !isMuted; ui.muteBtn.innerHTML = isMuted ? iconMuteSVG : iconVolSVG; }
@@ -350,128 +524,204 @@
         function toggleHardMode() { hmActive ? exitHardMode() : startHardMode(); }
         function startHardMode() { if(images.length === 0) return; hmActive = true; ui.hmBtn.classList.add("active"); setHmPhase(1); startTimer(); }
         function exitHardMode() { hmActive = false; ui.hmBtn.classList.remove("active"); ui.phase.innerText = ""; isImageHidden = false; ui.btnHmShow.style.display = 'none'; ui.btnHmHide.style.display = 'none'; applyFilters(); resetTimer(); }
-        function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); updateTimerUI(); }
+        function setHmPhase(p) { hmPhase = p; ui.phase.innerText = hmPhases[p].t; remaining = hmPhases[p].s; isImageHidden = hmPhases[p].h; if (isRunning) expectedEndTime = Date.now() + (remaining * 1000); applyFilters(); playSound(); resetTimer(); }
         function hmNextPhase() { if(hmPhase < 4) { setHmPhase(hmPhase + 1); } else { stopTimer(); ui.phase.innerText = "完了"; ui.btnHmShow.style.display = 'block'; ui.btnHmHide.style.display = 'block'; playSound(); } }
 
-        // --- 小窓 (PiP) の完全同期処理 (各ブラウザ対応版) ---
-        async function togglePiP() {
-            if (!pipCanvas || typeof pipCanvas.captureStream !== 'function') {
-                alert("お使いのブラウザはPiP（小窓描画）機能に未対応です。"); return;
+        function initMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', function() { startTimer(); });
+                navigator.mediaSession.setActionHandler('pause', function() { stopTimer(); });
+                navigator.mediaSession.setActionHandler('previoustrack', function() { prevImage(); });
+                navigator.mediaSession.setActionHandler('nexttrack', function() { nextImage(); });
             }
-            
-            // すでに小窓が開いているかのチェック（Safari対応含む）
-            const isPiPOpen = document.pictureInPictureElement || (pipVideo.webkitPresentationMode === 'picture-in-picture');
-
-            if (isPiPOpen) {
-                if (document.exitPictureInPicture) {
-                    await document.exitPictureInPicture().catch(function(e){console.error(e)});
-                } else if (pipVideo.webkitSetPresentationMode) {
-                    pipVideo.webkitSetPresentationMode('inline');
-                }
-            } else {
-                if (images.length === 0) { alert("まずは画像を読み込んでください"); return; }
-                try {
-                    if (!pipVideo.srcObject) {
-                        pipVideo.srcObject = pipCanvas.captureStream(30); 
-                    }
-                    await pipVideo.play();
-                    isPiP = true;
-                    updatePiP(); 
-                    
-                    // ブラウザごとの小窓化命令を呼び分ける
-                    if (typeof pipVideo.requestPictureInPicture === 'function') {
-                        await pipVideo.requestPictureInPicture(); // Chrome, Edge系
-                    } else if (typeof pipVideo.webkitSetPresentationMode === 'function') {
-                        pipVideo.webkitSetPresentationMode('picture-in-picture'); // Safari系
-                    } else {
-                        throw new Error("ご利用のブラウザは小窓化APIに未対応です。ChromeかEdgeをご利用ください。");
-                    }
-                } catch (error) {
-                    isPiP = false;
-                    alert("小窓化に失敗しました: " + error.message);
-                }
+        }
+        function updateMediaSession() {
+            if ('mediaSession' in navigator && images.length > 0) {
+                const item = images[currentIndex];
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: item ? item.name : 'Croquis App',
+                    artist: '残り: ' + ui.timer.innerText,
+                    album: isFavMode ? '★ お気に入り' : '通常再生'
+                });
+                navigator.mediaSession.playbackState = isRunning ? "playing" : "paused";
             }
         }
 
-        if(pipVideo) {
-            pipVideo.addEventListener('leavepictureinpicture', function() { isPiP = false; ui.pipBtn.classList.remove('pip-active'); });
-            pipVideo.addEventListener('enterpictureinpicture', function() { isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP(); });
+        function initPiP() {
+            if(pipInitialized) return true;
+            try {
+                pipVideo = document.createElement('video'); pipVideo.muted = true; pipVideo.playsInline = true;
+                pipVideo.style.position = 'fixed'; pipVideo.style.left = '-9999px'; pipVideo.style.opacity = '0'; pipVideo.style.pointerEvents = 'none';
+                document.body.appendChild(pipVideo); pipCanvas = document.createElement('canvas'); pipCtx = pipCanvas.getContext('2d');
+                
+                pipVideo.addEventListener('play', function() { if (!isRunning) startTimer(); });
+                pipVideo.addEventListener('pause', function() { if (isRunning) stopTimer(); });
+                pipVideo.addEventListener('leavepictureinpicture', function() { isPiP = false; ui.pipBtn.classList.remove('pip-active'); });
+                pipVideo.addEventListener('enterpictureinpicture', function() { isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP(); });
+                pipInitialized = true; return true;
+            } catch(e) { return false; }
+        }
+
+        async function togglePiP() {
+            if (images.length === 0) { alert("画像を読み込んでください"); return; }
             
-            // Safari用のイベントリスナー
-            pipVideo.addEventListener('webkitpresentationmodechanged', function() {
-                if (pipVideo.webkitPresentationMode === 'picture-in-picture') {
-                    isPiP = true; ui.pipBtn.classList.add('pip-active'); updatePiP();
-                } else {
-                    isPiP = false; ui.pipBtn.classList.remove('pip-active');
+            // Document Picture-in-Picture API (画像100%表示＋ホバー時のみオーバーレイUI仕様)
+            if ('documentPictureInPicture' in window) {
+                if (docPipWindow) { docPipWindow.close(); return; } 
+                try {
+                    const aspect = ui.img.naturalHeight / ui.img.naturalWidth;
+                    docPipWindow = await window.documentPictureInPicture.requestWindow({
+                        width: 400, height: Math.round(400 * aspect) || 300
+                    });
+                    
+                    const pipDoc = docPipWindow.document;
+                    const style = pipDoc.createElement('style');
+                    style.textContent = `
+                        body { margin: 0; background: var(--bg-color, #1e1e1e); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; position: relative; }
+                        #pip-canvas { width: 100%; height: 100%; object-fit: contain; }
+                        #pip-prog-bg { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(0,0,0,0.3); z-index: 10; }
+                        #pip-prog { width: 100%; height: 100%; background: #00d4ff; }
+                        #pip-controls { 
+                            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                            background: rgba(17, 17, 17, 0.85); display: flex; justify-content: center; align-items: center; 
+                            gap: 6px; padding: 8px 12px; border-radius: 6px; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; z-index: 20;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.5); border: 1px solid #333;
+                        }
+                        body:hover #pip-controls, body:active #pip-controls { opacity: 1; pointer-events: auto; }
+                        button { background: #333; color: #ddd; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 36px; }
+                        button:hover { background: #444; }
+                        button.accent { background: #00d4ff; color: #000; }
+                        .svg-icon { width: 16px; height: 16px; fill: currentColor; pointer-events: none; }
+                        #pip-time { color: #00d4ff; font-weight: bold; font-family: sans-serif; font-size: 14px; margin-left: 6px; min-width: 42px; text-align: center; }
+                    `;
+                    pipDoc.head.appendChild(style);
+                    
+                    const canvas = pipDoc.createElement('canvas'); canvas.id = 'pip-canvas';
+                    const progBg = pipDoc.createElement('div'); progBg.id = 'pip-prog-bg';
+                    const prog = pipDoc.createElement('div'); prog.id = 'pip-prog'; progBg.appendChild(prog);
+                    
+                    const controls = pipDoc.createElement('div'); controls.id = 'pip-controls';
+                    const prevBtn = pipDoc.createElement('button'); prevBtn.innerHTML = '<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>';
+                    prevBtn.onclick = function() { prevImage(); };
+                    
+                    const playBtn = pipDoc.createElement('button'); playBtn.id = 'pip-play'; playBtn.className = isRunning ? '' : 'accent';
+                    playBtn.innerHTML = isRunning ? iconPauseSVG : iconPlaySVG;
+                    playBtn.onclick = function() { toggleTimer(); };
+                    
+                    const nextBtn = pipDoc.createElement('button'); nextBtn.innerHTML = '<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>';
+                    nextBtn.onclick = function() { nextImage(); };
+                    
+                    const timeLabel = pipDoc.createElement('div'); timeLabel.id = 'pip-time'; timeLabel.innerText = ui.timer.innerText;
+                    
+                    controls.append(prevBtn, playBtn, nextBtn, timeLabel);
+                    pipDoc.body.append(canvas, progBg, controls);
+                    
+                    docPipWindow.addEventListener('pagehide', function() {
+                        docPipWindow = null; isPiP = false; ui.pipBtn.classList.remove('pip-active');
+                    });
+                    
+                    isPiP = true; ui.pipBtn.classList.add('pip-active');
+                    docPipWindow.lastImageSrc = "";
+                    updatePiP(); return;
+                } catch(e) { console.warn("Doc PiP失敗、従来型へフォールバックします", e); }
+            }
+
+            // 従来型フォールバック
+            if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境はPiP機能に対応していません。"); return; }
+            if (document.pictureInPictureElement) { await document.exitPictureInPicture().catch(function(){}); } 
+            else {
+                try {
+                    if (!pipVideo.srcObject) { pipVideo.srcObject = pipCanvas.captureStream(30); }
+                    isPiP = true; updatePiP(); 
+                    if(isRunning) { await pipVideo.play(); } else { pipVideo.pause(); }
+                    await pipVideo.requestPictureInPicture();
+                    updateMediaSession();
+                } catch (error) { isPiP = false; }
+            }
+        }
+
+        function drawToCanvas(canvas, ctx, drawOverlay) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = bgMode === 0 ? '#1e1e1e' : (bgMode === 1 ? '#000' : '#fff');
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            if(!isImageHidden) {
+                ctx.translate(canvas.width/2, canvas.height/2);
+                if(settings.flipH) ctx.scale(-1, 1);
+                if(settings.flipV) ctx.scale(1, -1);
+                if(settings.mono) ctx.filter = 'grayscale(100%)';
+                ctx.drawImage(ui.img, -canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+                
+                if(settings.grid) {
+                    ctx.filter = 'none'; ctx.strokeStyle = 'rgba(128,128,128,0.4)'; ctx.lineWidth = Math.max(2, canvas.width / 200);
+                    ctx.beginPath();
+                    ctx.moveTo(-canvas.width/6, -canvas.height/2); ctx.lineTo(-canvas.width/6, canvas.height/2);
+                    ctx.moveTo(canvas.width/6, -canvas.height/2); ctx.lineTo(canvas.width/6, canvas.height/2);
+                    ctx.stroke();
                 }
-            });
+            }
+            ctx.restore();
+
+            if (drawOverlay) {
+                const barHeight = Math.max(10, canvas.height * 0.02);
+                const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
+                const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
+                const progWidth = (remainMs / totalMs) * canvas.width;
+                
+                ctx.fillStyle = '#111'; ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+                ctx.fillStyle = '#00d4ff'; ctx.fillRect(0, canvas.height - barHeight, progWidth, barHeight);
+
+                const fontSize = Math.max(30, canvas.height * 0.05);
+                ctx.font = "bold " + fontSize + "px sans-serif"; ctx.textBaseline = 'top';
+                let sec = Math.ceil(remainMs / 1000); let m = Math.floor(sec / 60); let s = sec % 60; 
+                const timeText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+                const textWidth = ctx.measureText(timeText).width;
+                ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, textWidth + fontSize, fontSize * 1.5);
+                ctx.fillStyle = '#00d4ff'; ctx.fillText(timeText, fontSize/2, fontSize/4);
+            }
         }
 
         function updatePiP() {
             if (!isPiP || !ui.img.complete || ui.img.naturalWidth === 0) return;
             
-            const minSize = 800;
-            const ratio = ui.img.naturalWidth / ui.img.naturalHeight;
-            if (ui.img.naturalWidth < minSize) {
-                pipCanvas.width = minSize; pipCanvas.height = minSize / ratio;
-            } else {
-                pipCanvas.width = ui.img.naturalWidth; pipCanvas.height = ui.img.naturalHeight;
-            }
-            
-            pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
-            pipCtx.save();
-            
-            // 1. 背景色
-            pipCtx.fillStyle = bgMode === 0 ? '#1e1e1e' : (bgMode === 1 ? '#000' : '#fff');
-            pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
-            
-            // 2. 画像の描画 (反転・白黒の適用)
-            if(!isImageHidden) {
-                pipCtx.translate(pipCanvas.width/2, pipCanvas.height/2);
-                if(settings.flipH) pipCtx.scale(-1, 1);
-                if(settings.flipV) pipCtx.scale(1, -1);
-                if(settings.mono) pipCtx.filter = 'grayscale(100%)';
-                
-                pipCtx.drawImage(ui.img, -pipCanvas.width/2, -pipCanvas.height/2, pipCanvas.width, pipCanvas.height);
-                
-                // グリッド描画
-                if(settings.grid) {
-                    pipCtx.filter = 'none'; 
-                    pipCtx.strokeStyle = 'rgba(128,128,128,0.4)';
-                    pipCtx.lineWidth = Math.max(2, pipCanvas.width / 200);
-                    pipCtx.beginPath();
-                    pipCtx.moveTo(-pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(-pipCanvas.width/6, pipCanvas.height/2);
-                    pipCtx.moveTo(pipCanvas.width/6, -pipCanvas.height/2); pipCtx.lineTo(pipCanvas.width/6, pipCanvas.height/2);
-                    pipCtx.moveTo(-pipCanvas.width/2, -pipCanvas.height/6); pipCtx.lineTo(pipCanvas.width/2, -pipCanvas.height/6);
-                    pipCtx.moveTo(-pipCanvas.width/2, pipCanvas.height/6); pipCtx.lineTo(pipCanvas.width/2, pipCanvas.height/6);
-                    pipCtx.stroke();
+            if (docPipWindow) {
+                const pCanvas = docPipWindow.document.getElementById('pip-canvas');
+                if(pCanvas) {
+                    pCanvas.width = ui.img.naturalWidth; pCanvas.height = ui.img.naturalHeight;
+                    drawToCanvas(pCanvas, pCanvas.getContext('2d'), false);
+                    
+                    // 次へ・戻るでの画像切り替え時にウィンドウサイズを画像の縦横比へジャストフィットさせる
+                    if (docPipWindow.lastImageSrc !== ui.img.src) {
+                        docPipWindow.lastImageSrc = ui.img.src;
+                        const baseWidth = docPipWindow.innerWidth || 400;
+                        const targetHeight = Math.round(baseWidth * (pCanvas.height / pCanvas.width)) || 300;
+                        const diffH = docPipWindow.outerHeight - docPipWindow.innerHeight;
+                        docPipWindow.resizeTo(baseWidth, targetHeight + diffH);
+                    }
+                    
+                    const timeDiv = docPipWindow.document.getElementById('pip-time');
+                    if(timeDiv) timeDiv.innerText = ui.timer.innerText;
+                    
+                    const playBtn = docPipWindow.document.getElementById('pip-play');
+                    if(playBtn) { playBtn.innerHTML = isRunning ? iconPauseSVG : iconPlaySVG; playBtn.className = isRunning ? '' : 'accent'; }
+                    
+                    const pBar = docPipWindow.document.getElementById('pip-prog');
+                    if(pBar) {
+                        const totalMs = (hmActive ? hmPhases[hmPhase].s : timerSeconds) * 1000; 
+                        const remainMs = isRunning ? Math.max(0, expectedEndTime - Date.now()) : (remaining * 1000);
+                        pBar.style.width = ((remainMs / totalMs) * 100) + '%';
+                    }
                 }
+                return;
             }
-            pipCtx.restore();
 
-            // 3. タイマーとプログレスバー
-            const barHeight = Math.max(10, pipCanvas.height * 0.02);
-            const total = hmActive ? hmPhases[hmPhase].s : timerSeconds; 
-            const progWidth = (remaining / total) * pipCanvas.width;
-            
-            pipCtx.fillStyle = '#111'; pipCtx.fillRect(0, pipCanvas.height - barHeight, pipCanvas.width, barHeight);
-            pipCtx.fillStyle = '#00d4ff'; pipCtx.fillRect(0, pipCanvas.height - barHeight, progWidth, barHeight);
-
-            const fontSize = Math.max(30, pipCanvas.height * 0.05);
-            pipCtx.font = "bold " + fontSize + "px sans-serif";
-            pipCtx.textBaseline = 'top';
-            let m = Math.floor(remaining / 60); let s = remaining % 60; 
-            const timeText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
-            
-            const textWidth = pipCtx.measureText(timeText).width;
-            pipCtx.fillStyle = 'rgba(0,0,0,0.6)';
-            pipCtx.fillRect(0, 0, textWidth + fontSize, fontSize * 1.5);
-            
-            pipCtx.fillStyle = '#00d4ff';
-            pipCtx.fillText(timeText, fontSize/2, fontSize/4);
+            const minSize = 800; const ratio = ui.img.naturalWidth / ui.img.naturalHeight;
+            if (ui.img.naturalWidth < minSize) { pipCanvas.width = minSize; pipCanvas.height = minSize / ratio; } 
+            else { pipCanvas.width = ui.img.naturalWidth; pipCanvas.height = ui.img.naturalHeight; }
+            drawToCanvas(pipCanvas, pipCtx, true);
         }
 
-        // スワイプ操作
         let pointerStartX = 0; let lastTapTime = 0; const imgContainer = document.getElementById('image-container');
         imgContainer.addEventListener('pointerdown', function(e) { pointerStartX = e.clientX; });
         imgContainer.addEventListener('pointerup', function(e) {
@@ -479,8 +729,6 @@
             if (Math.abs(diffX) > threshold) { if (diffX > 0) { nextImage(); } else { prevImage(); } lastTapTime = 0; } 
             else { const currentTime = new Date().getTime(); const tapLength = currentTime - lastTapTime; if (tapLength < 300 && tapLength > 0) { toggleTimer(); lastTapTime = 0; e.preventDefault(); } else { lastTapTime = currentTime; } }
         });
-        
-        // キーボード操作
         document.addEventListener('keydown', function(e) {
             if (document.activeElement.tagName === 'SELECT' || document.activeElement.tagName === 'INPUT') return;
             if (e.code === 'Space') { e.preventDefault(); toggleTimer(); } 
