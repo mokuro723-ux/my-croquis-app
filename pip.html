@@ -197,7 +197,7 @@
         let db; const dbName = "CroquisAppDB", storeName = "favorites";
 
         const iconPlaySVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z"/></svg>`;
-        const iconPauseSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        const iconPauseSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"</svg>`;
         const iconVolSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
         const iconMuteSVG = `<svg viewBox="0 0 24 24" class="svg-icon"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>`;
 
@@ -565,7 +565,6 @@
         async function togglePiP() {
             if (images.length === 0) { alert("画像を読み込んでください"); return; }
             
-            // Document Picture-in-Picture API (画像100%表示＋ホバー時のみオーバーレイUI仕様)
             if ('documentPictureInPicture' in window) {
                 if (docPipWindow) { docPipWindow.close(); return; } 
                 try {
@@ -579,20 +578,22 @@
                     style.textContent = `
                         body { margin: 0; background: var(--bg-color, #1e1e1e); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; position: relative; }
                         #pip-canvas { width: 100%; height: 100%; object-fit: contain; }
-                        #pip-prog-bg { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(0,0,0,0.3); z-index: 10; }
+                        #pip-prog-bg { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(0,0,0,0.3); z-index: 30; transition: transform 0.2s ease; }
                         #pip-prog { width: 100%; height: 100%; background: #00d4ff; }
                         #pip-controls { 
-                            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                            background: rgba(17, 17, 17, 0.85); display: flex; justify-content: center; align-items: center; 
-                            gap: 6px; padding: 8px 12px; border-radius: 6px; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; z-index: 20;
-                            box-shadow: 0 2px 10px rgba(0,0,0,0.5); border: 1px solid #333;
+                            position: absolute; bottom: 0; left: 0; width: 100%;
+                            background: rgba(17, 17, 17, 0.92); display: flex; justify-content: space-between; align-items: center; 
+                            padding: 6px 12px; box-sizing: border-box; opacity: 0; transform: translateY(100%); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; z-index: 20;
+                            border-top: 1px solid #333;
                         }
-                        body:hover #pip-controls, body:active #pip-controls { opacity: 1; pointer-events: auto; }
-                        button { background: #333; color: #ddd; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 36px; }
+                        body:hover #pip-controls, body:active #pip-controls { opacity: 1; transform: translateY(0); pointer-events: auto; }
+                        body:hover #pip-prog-bg { transform: translateY(-38px); }
+                        .btn-group { display: flex; gap: 4px; }
+                        button { background: #2a2a2a; color: #ddd; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 32px; }
                         button:hover { background: #444; }
                         button.accent { background: #00d4ff; color: #000; }
-                        .svg-icon { width: 16px; height: 16px; fill: currentColor; pointer-events: none; }
-                        #pip-time { color: #00d4ff; font-weight: bold; font-family: sans-serif; font-size: 14px; margin-left: 6px; min-width: 42px; text-align: center; }
+                        .svg-icon { width: 14px; height: 14px; fill: currentColor; pointer-events: none; }
+                        #pip-time { color: #00d4ff; font-weight: bold; font-family: sans-serif; font-size: 13px; min-width: 42px; text-align: right; letter-spacing: 0.5px; }
                     `;
                     pipDoc.head.appendChild(style);
                     
@@ -601,6 +602,8 @@
                     const prog = pipDoc.createElement('div'); prog.id = 'pip-prog'; progBg.appendChild(prog);
                     
                     const controls = pipDoc.createElement('div'); controls.id = 'pip-controls';
+                    const btnGroup = pipDoc.createElement('div'); btnGroup.className = 'btn-group';
+                    
                     const prevBtn = pipDoc.createElement('button'); prevBtn.innerHTML = '<svg viewBox="0 0 24 24" class="svg-icon"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>';
                     prevBtn.onclick = function() { prevImage(); };
                     
@@ -613,7 +616,8 @@
                     
                     const timeLabel = pipDoc.createElement('div'); timeLabel.id = 'pip-time'; timeLabel.innerText = ui.timer.innerText;
                     
-                    controls.append(prevBtn, playBtn, nextBtn, timeLabel);
+                    btnGroup.append(prevBtn, playBtn, nextBtn);
+                    controls.append(btnGroup, timeLabel);
                     pipDoc.body.append(canvas, progBg, controls);
                     
                     docPipWindow.addEventListener('pagehide', function() {
@@ -626,7 +630,6 @@
                 } catch(e) { console.warn("Doc PiP失敗、従来型へフォールバックします", e); }
             }
 
-            // 従来型フォールバック
             if (!initPiP() || typeof pipCanvas.captureStream !== 'function') { alert("お使いの環境はPiP機能に対応していません。"); return; }
             if (document.pictureInPictureElement) { await document.exitPictureInPicture().catch(function(){}); } 
             else {
@@ -691,7 +694,6 @@
                     pCanvas.width = ui.img.naturalWidth; pCanvas.height = ui.img.naturalHeight;
                     drawToCanvas(pCanvas, pCanvas.getContext('2d'), false);
                     
-                    // 次へ・戻るでの画像切り替え時にウィンドウサイズを画像の縦横比へジャストフィットさせる
                     if (docPipWindow.lastImageSrc !== ui.img.src) {
                         docPipWindow.lastImageSrc = ui.img.src;
                         const baseWidth = docPipWindow.innerWidth || 400;
